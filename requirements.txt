@@ -1,0 +1,14 @@
+replicate
+python-dotenv
+requests
+google-generativeai
+moviepy
+Pillow
+yt-dlp
+openai-whisper
+tenacity
+pydantic
+youtube-transcript-api
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib

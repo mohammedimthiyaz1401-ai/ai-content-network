@@ -1,0 +1,89 @@
+# daily_automation.yml
+# GitHub Actions workflow for daily content generation
+# Runs at 6:00 AM UTC every day
+
+name: Daily Content Generation
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # 6:00 AM UTC daily
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      
+      - name: Load API keys
+        env:
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_ID_CH1: ${{ secrets.YOUTUBE_CHANNEL_ID_CH1 }}
+          YOUTUBE_CHANNEL_ID_CH2: ${{ secrets.YOUTUBE_CHANNEL_ID_CH2 }}
+          YOUTUBE_CHANNEL_ID_CH3: ${{ secrets.YOUTUBE_CHANNEL_ID_CH3 }}
+        run: |
+          echo "REPLICATE_API_TOKEN=${{ secrets.REPLICATE_API_TOKEN }}" >> .env
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env
+      
+      - name: Step 1 - Trend Sniffer
+        run: python src/trend_sniffer.py
+        timeout-minutes: 15
+      
+      - name: Step 2 - Scriptwriter
+        run: python src/scriptwriter.py
+        timeout-minutes: 10
+      
+      - name: Step 3 - Media Generator
+        run: python src/media_generator.py
+        timeout-minutes: 30
+      
+      - name: Step 4 - Video Assembler
+        run: python src/video_assembler.py
+        timeout-minutes: 60
+      
+      - name: Step 5 - Upload to YouTube
+        run: python src/youtube_uploader.py
+        timeout-minutes: 30
+      
+      - name: Generate report
+        if: always()
+        run: |
+          echo "## Daily Content Report" >> $GITHUB_STEP_SUMMARY
+          echo "Date: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Generated Content" >> $GITHUB_STEP_SUMMARY
+          ls -la data/videos/ 2>/dev/null || echo "No videos generated" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-content-${{ github.run_number }}
+          path: |
+            data/videos/
+            data/scripts/
+          retention-days: 7
