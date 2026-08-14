@@ -4,13 +4,13 @@ scriptwriter.py
 Uses Google Gemini API to generate 1500+ word scripts from viral transcripts.
 Includes SEO optimization for titles and descriptions.
 
+Uses google-genai (new package, NOT deprecated google-generativeai)
 Cost: $0 (Gemini free tier)
-NO .env dependency - uses config.py
 """
 
 import os
 import json
-import google.generativeai as genai
+from google import genai
 from pathlib import Path
 from datetime import datetime
 from typing import Dict
@@ -21,7 +21,7 @@ SCRIPTS_DIR = DATA_DIR / "scripts"
 SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configure Gemini API
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Channel-specific persona prompts
 CHANNEL_PERSONAS = {
@@ -81,9 +81,10 @@ Generate the JSON output now:"""
     print(f"[SCRIPTWRITER] Source transcript: {len(transcript)} chars")
     print(f"[SCRIPTWRITER] Target: {word_count_target}+ words")
     
-    model = genai.GenerativeModel("gemini-pro")
-    
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-3.1-flash-lite",
+        contents=prompt,
+    )
     
     try:
         response_text = response.text.strip()
@@ -141,8 +142,10 @@ Generate improved SEO metadata:
 
 Generate the JSON now:"""
     
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-3.1-flash-lite",
+        contents=prompt,
+    )
     
     try:
         response_text = response.text.strip()

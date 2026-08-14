@@ -3,7 +3,7 @@
 # ============================================================
 # LAST UPDATED: 2026-08-14
 # STATUS: IN PROGRESS
-# CURRENT PHASE: Step 6 - Ready to Test
+# CURRENT PHASE: Step 14 - Get Replicate Token & Local Test
 # ============================================================
 
 # ⚠️ IMPORTANT: THIS FILE MUST BE UPDATED AFTER EVERY CHANGE
@@ -74,9 +74,10 @@ GEMINI API:
 - Cost: FREE
 
 REPLICATE API:
-- Status: 🔜 PENDING - User needs to create account
-- URL: https://replicate.com
+- Status: 🔜 PENDING - User needs to create account + add real token
+- URL: https://replicate.com/account/api-tokens
 - Expected Cost: ~$0.035/video
+- GitHub Secret: placeholder — replace with real r8_ token
 
 
 # ============================================================
@@ -162,6 +163,10 @@ ACTUAL ESTIMATE: ~$10.50/month (slightly over, can reduce videos)
 ✅ Step 11: GitHub Secrets added
 ✅ Step 12: YouTube OAuth2 tokens obtained
 ✅ Step 13: .env file removed (not needed)
+✅ Step 13b: scriptwriter.py migrated to google-genai (gemini-3.1-flash-lite)
+✅ Step 13c: trend_sniffer.py updated for youtube-transcript-api v1.x API
+✅ Step 13d: requirements.txt updated (google-genai)
+✅ Step 13e: scripts/load_secrets.ps1.example added for local testing
 
 
 # ============================================================
@@ -169,23 +174,26 @@ ACTUAL ESTIMATE: ~$10.50/month (slightly over, can reduce videos)
 # ============================================================
 
 🔜 STEP 14: Get Replicate API Token
-   - Go to https://replicate.com
+   - Go to https://replicate.com/account/api-tokens
    - Sign up with GitHub
-   - Create API token
-   - Update src/config.py: REPLICATE_API_TOKEN = "r8_..."
+   - Create API token (starts with r8_)
+   - Update GitHub Secret: REPLICATE_API_TOKEN
+   - For local test: copy scripts/load_secrets.ps1.example → scripts/load_secrets.ps1
 
-🔜 STEP 15: Update config.py with all real keys
-   - REPLICATE_API_TOKEN (from Step 14)
-   - GEMINI_API_KEY (already have)
-   - All YouTube credentials (already hardcoded)
+🔜 STEP 15: Set local secrets (DO NOT hardcode in config.py)
+   - config.py reads from environment variables (correct for GitHub Actions)
+   - Local: copy scripts/load_secrets.ps1.example → scripts/load_secrets.ps1
+   - Fill in all 6 values, then run: . .\scripts\load_secrets.ps1
 
-🔜 STEP 16: Push code to GitHub
-   - git add .
-   - git commit -m "Complete pipeline - ready to test"
+🔜 STEP 16: Commit & push pending changes
+   - Uncommitted: scriptwriter.py, trend_sniffer.py, requirements.txt, .gitignore, scripts/
+   - git add . && git commit -m "Update Gemini SDK and local test helper"
    - git push
 
 🔜 STEP 17: Test locally
+   - . .\scripts\load_secrets.ps1
    - python src/main_pipeline.py --test
+   - NOTE: YouTube transcripts may fail from cloud IPs; pipeline uses fallback topic
 
 🔜 STEP 18: Run full pipeline on GitHub Actions
    - Trigger workflow manually
@@ -265,6 +273,7 @@ CHANNEL 1: Aria Future
 # ============================================================
 
 TEST LOCALLY:
+. .\scripts\load_secrets.ps1
 python src/main_pipeline.py --test
 
 TEST CHANNEL 1 ONLY:
@@ -283,6 +292,11 @@ https://github.com/mohammedimthiyaz1401-ai/ai-content-network/actions
 # ============================================================
 # 14. TROUBLESHOOTING
 # ============================================================
+
+IF YOUTUBE TRANSCRIPT FAILS:
+- YouTube blocks cloud/datacenter IPs — run locally from home network
+- Pipeline falls back to "AI Tools 2026" topic if no transcripts found
+- GitHub Actions may hit same issue; consider pre-fetched topics as fallback
 
 IF YOUTUBE UPLOAD FAILS:
 - Check refresh token hasn't expired (lasts ~1 week)

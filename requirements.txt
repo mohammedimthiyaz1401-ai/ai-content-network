@@ -1,6 +1,6 @@
 replicate
 requests
-google-generativeai
+google-genai
 moviepy
 Pillow
 yt-dlp

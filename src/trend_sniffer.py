@@ -74,9 +74,10 @@ def get_video_transcript(video_id: str) -> str:
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
         
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
+        ytt_api = YouTubeTranscriptApi()
+        transcript = ytt_api.fetch(video_id, languages=["en"])
         
-        full_text = " ".join([segment["text"] for segment in transcript])
+        full_text = " ".join([snippet.text for snippet in transcript.snippets])
         
         return full_text
     
@@ -109,7 +110,7 @@ def get_trending_topics(channel: str, max_results: int = 5) -> List[Dict]:
                 video["query"] = query
                 video["channel"] = channel
                 all_videos.append(video)
-                print(f"[FOUND] {video['title'][:60]}... ({len(transcript)} chars)")
+                print(f"[FOUND] {video['title'][:60].encode('ascii', 'ignore').decode('ascii')}... ({len(transcript)} chars)")
     
     all_videos.sort(key=lambda x: x.get("view_count", 0), reverse=True)
     
