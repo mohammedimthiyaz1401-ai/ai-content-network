@@ -1,9 +1,9 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-14
+# LAST UPDATED: 2026-08-14 (evening, after API setup complete)
 # STATUS: IN PROGRESS
-# CURRENT PHASE: Step 14 - Get Replicate Token & Local Test
+# CURRENT PHASE: Step 17 - Full pipeline test
 # ============================================================
 
 # ⚠️ IMPORTANT: THIS FILE MUST BE UPDATED AFTER EVERY CHANGE
@@ -70,14 +70,20 @@ GOOGLE CLOUD PROJECT:
 - Project Name: ai-content-network
 
 GEMINI API:
-- Status: ✅ Created (key in config.py)
-- Cost: FREE
+- Status: ✅ WORKING (tested - generated 1643-word script)
+- Model: gemini-3.1-flash-lite (via google-genai package)
+- Cost: $10 prepay credits (bought 2026-08-14) - lasts 12 months
+- IMPORTANT: Since Mar 2026, new AI Studio users require prepay credits.
+  The $300 Google Cloud free trial does NOT cover Gemini API usage.
+  Billing must be enabled on project: aiscriptforyoutube
 
 REPLICATE API:
-- Status: 🔜 PENDING - User needs to create account + add real token
+- Status: ✅ WORKING (tested - SDXL image generated)
 - URL: https://replicate.com/account/api-tokens
-- Expected Cost: ~$0.035/video
-- GitHub Secret: placeholder — replace with real r8_ token
+- Credit: $5 added (2026-08-14)
+- Model: stability-ai/sdxl (must use version ID, NOT :latest tag)
+- Working version: 7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc
+- Rate limit: 6 req/min with <$5 credit (small delay between calls)
 
 
 # ============================================================
@@ -86,8 +92,8 @@ REPLICATE API:
 
 | Secret Name | Status |
 |-------------|--------|
-| REPLICATE_API_TOKEN | ✅ Added (placeholder - needs real token) |
-| GEMINI_API_KEY | ✅ Added |
+| REPLICATE_API_TOKEN | ✅ Updated with real token |
+| GEMINI_API_KEY | ✅ Updated with real key |
 | YOUTUBE_CLIENT_ID | ✅ Added |
 | YOUTUBE_CLIENT_SECRET | ✅ Added |
 | YOUTUBE_REFRESH_TOKEN | ✅ Added |
@@ -134,7 +140,7 @@ ai-content-network/
 |-----------|------|------|
 | Orchestration | GitHub Actions | $0 (free) |
 | Trend Sniffer | youtube-transcript-api + yt-dlp | $0 (free) |
-| Scriptwriter | Google Gemini API | $0 (free) |
+| Scriptwriter | Gemini API (gemini-3.1-flash-lite) | $10 prepay / 12mo |
 | Voice | XTTS-v2 (Replicate) | ~$0.015/min |
 | Images | SDXL (Replicate) | ~$0.004/image |
 | Subtitles | WhisperX | $0 (local) |
@@ -142,8 +148,13 @@ ai-content-network/
 | Thumbnails | Pillow (PIL) | $0 (local) |
 | YouTube Upload | YouTube Data API v3 | $0 (free) |
 
+ONE-TIME COSTS (2026-08-14):
+- Gemini prepay: $10 (12 months of scriptwriting)
+- Replicate credit: $5 (SDXL images + XTTS-v2 voice)
+- TOTAL invested: $15
+
 MONTHLY BUDGET: $7.00 USD (~520 INR)
-ACTUAL ESTIMATE: ~$10.50/month (slightly over, can reduce videos)
+RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
 
 
 # ============================================================
@@ -167,44 +178,41 @@ ACTUAL ESTIMATE: ~$10.50/month (slightly over, can reduce videos)
 ✅ Step 13c: trend_sniffer.py updated for youtube-transcript-api v1.x API
 ✅ Step 13d: requirements.txt updated (google-genai)
 ✅ Step 13e: scripts/load_secrets.ps1.example added for local testing
+✅ Step 14: Replicate API token obtained and tested (SDXL image generated)
+   - Added $5 Replicate credit
+   - Fixed model version (latest tag broken, use version ID)
+✅ Step 15: Gemini prepay credits bought ($10) - API now works
+   - Was hitting 403 (billing disabled) then 429 (prepay credits depleted)
+   - Fixed by: enabling billing + buying $10 prepay credits
+✅ Step 16: All GitHub Secrets updated with real values
+   - REPLICATE_API_TOKEN, GEMINI_API_KEY both updated
 
 
 # ============================================================
 # 8. WHAT'S PENDING (NEXT STEPS)
 # ============================================================
 
-🔜 STEP 14: Get Replicate API Token
-   - Go to https://replicate.com/account/api-tokens
-   - Sign up with GitHub
-   - Create API token (starts with r8_)
-   - Update GitHub Secret: REPLICATE_API_TOKEN
-   - For local test: copy scripts/load_secrets.ps1.example → scripts/load_secrets.ps1
-
-🔜 STEP 15: Set local secrets (DO NOT hardcode in config.py)
-   - config.py reads from environment variables (correct for GitHub Actions)
-   - Local: copy scripts/load_secrets.ps1.example → scripts/load_secrets.ps1
-   - Fill in all 6 values, then run: . .\scripts\load_secrets.ps1
-
-🔜 STEP 16: Commit & push pending changes
-   - Uncommitted: scriptwriter.py, trend_sniffer.py, requirements.txt, .gitignore, scripts/
-   - git add . && git commit -m "Update Gemini SDK and local test helper"
-   - git push
-
-🔜 STEP 17: Test locally
-   - . .\scripts\load_secrets.ps1
+🔜 STEP 17: Test full pipeline locally
+   - . .\scripts\load_secrets.ps1 (create from .example with real keys)
    - python src/main_pipeline.py --test
-   - NOTE: YouTube transcripts may fail from cloud IPs; pipeline uses fallback topic
+   - Tests: trend sniffer + scriptwriter + media gen (SDXL/XTTS) + video assembly
+   - Skips: YouTube upload (--test flag)
+   - NOTE: video_assembler.py needs update for moviepy 2.x API (changed imports)
 
-🔜 STEP 18: Run full pipeline on GitHub Actions
+🔜 STEP 18: Fix video_assembler.py for moviepy 2.x
+   - moviepy 2.2.1 installed but video_assembler.py uses v1.x imports
+   - Need to update: from moviepy.editor import ... → from moviepy import ...
+
+🔜 STEP 19: Run full pipeline on GitHub Actions
    - Trigger workflow manually
    - Check if video uploads as Private
 
-🔜 STEP 19: Manual publish on YouTube
+🔜 STEP 20: Manual publish on YouTube
    - Go to YouTube Studio
    - Find Private video
    - Click Publish
 
-🔜 STEP 20: Create Channel 2 & 3 (separate accounts)
+🔜 STEP 21: Create Channel 2 & 3 (separate accounts)
    - Create new Gmail for each
    - Create YouTube channel
    - Get new OAuth2 credentials
@@ -304,13 +312,21 @@ IF YOUTUBE UPLOAD FAILS:
 - Verify channel ID is correct
 
 IF REPLICATE FAILS:
-- Check API token is valid
-- Check you have credits remaining
-- Try smaller prompt
+- Check API token is valid (r8_...)
+- Check you have credits remaining (must add at least $5)
+- Model version: use specific version ID, NOT :latest tag
+- Rate limit: 6 req/min with <$5 credit - add small delays between calls
+
+IF REPLICATE RETURNS "Invalid version or not permitted" (422):
+- The :latest tag does NOT work - use a specific version ID
+- SDXL working version: 7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc
 
 IF GEMINI FAILS:
 - Check API key is valid
-- Check free tier limits not exceeded
+- 403 = billing not enabled on the project the key belongs to
+- 429 "prepayment credits depleted" = need to buy prepay credits (min $10)
+  since March 2026 the $300 free trial does NOT cover Gemini API
+- Model: gemini-3.1-flash-lite (google-genai package, NOT google-generativeai)
 
 IF VIDEO ASSEMBLY FAILS:
 - Ensure FFmpeg is installed
@@ -340,8 +356,9 @@ GITHUB SECRETS: https://github.com/mohammedimthiyaz1401-ai/ai-content-network/se
 When starting a new session, paste this file and say:
 
 "I am building an AI Content Network project. Here is the memory file 
-with all progress. Last status: Step 13 completed (all code written, 
-.env removed). Next step: Get Replicate API token and test the pipeline. 
+with all progress. Last status: All APIs working (Gemini + Replicate),
+GitHub secrets updated. Next step: Test full pipeline locally, fix 
+video_assembler.py for moviepy 2.x, then run on GitHub Actions. 
 Continue from where we left off."
 
 
