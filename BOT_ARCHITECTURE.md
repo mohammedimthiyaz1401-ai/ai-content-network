@@ -47,13 +47,18 @@ Fully automated YouTube & Instagram content network generating 3 channels of AI-
 
 ---
 
-## API Keys Required
+## API Keys Required (GitHub Secrets)
 
 | Service | Key | Location |
 |---|---|---|
-| Replicate | `REPLICATE_API_TOKEN` | `.env` |
-| Gemini | `GEMINI_API_KEY` | `.env` |
-| YouTube | `YOUTUBE_API_KEY` | `.env` |
+| Replicate | `REPLICATE_API_TOKEN` | `config.py` + GitHub Secrets |
+| Gemini | `GEMINI_API_KEY` | `config.py` + GitHub Secrets |
+| YouTube OAuth | `YOUTUBE_CLIENT_ID` | `config.py` + GitHub Secrets |
+| YouTube OAuth | `YOUTUBE_CLIENT_SECRET` | `config.py` + GitHub Secrets |
+| YouTube OAuth | `YOUTUBE_REFRESH_TOKEN` | `config.py` + GitHub Secrets |
+| YouTube Channel | `YOUTUBE_CHANNEL_ID` | `config.py` + GitHub Secrets |
+
+> **NO .env FILE REQUIRED** - All secrets hardcoded in `src/config.py`
 
 ---
 
@@ -64,11 +69,13 @@ ai-content-network/
 ├── .github/workflows/daily_automation.yml
 ├── src/
 │   ├── __init__.py
-│   ├── media_generator.py    ✅ DONE
-│   ├── trend_sniffer.py      ✅ DONE
-│   ├── scriptwriter.py       ✅ DONE
-│   ├── video_assembler.py    ✅ DONE
-│   └── youtube_uploader.py   ✅ DONE
+│   ├── config.py               ✅ DONE (API keys - NO .env)
+│   ├── main_pipeline.py        ✅ DONE (Master orchestrator)
+│   ├── media_generator.py      ✅ DONE
+│   ├── trend_sniffer.py        ✅ DONE
+│   ├── scriptwriter.py         ✅ DONE
+│   ├── video_assembler.py      ✅ DONE
+│   └── youtube_uploader.py     ✅ DONE
 ├── data/
 │   ├── scripts/
 │   ├── audio/
@@ -78,7 +85,6 @@ ai-content-network/
 ├── assets/
 │   ├── voice_samples/
 │   └── fonts/
-├── .env
 ├── .gitignore
 ├── requirements.txt
 └── BOT_ARCHITECTURE.md
@@ -90,11 +96,13 @@ ai-content-network/
 
 | Component | Daily Cost | Monthly Cost |
 |---|---|---|
-| XTTS-v2 Voice | $1.08 | $32.40 |
-| SDXL Images | $1.01 | $30.30 |
+| XTTS-v2 Voice (2 videos) | $0.27 | $8.10 |
+| SDXL Images (20 images) | $0.08 | $2.40 |
 | GitHub Actions | $0 | $0 |
 | Gemini API | $0 | $0 |
-| **TOTAL** | **$2.09** | **$62.70** |
+| **TOTAL** | **$0.35** | **$10.50** |
+
+> **Note:** Slightly over $7 budget. Can reduce to 1 long-form video/day to hit target.
 
 ---
 
@@ -129,6 +137,9 @@ ai-content-network/
 | 2026-08-14 | Added video_assembler.py (MoviePy + FFmpeg) | AI Assistant |
 | 2026-08-14 | Added youtube_uploader.py (YouTube API v3) | AI Assistant |
 | 2026-08-14 | Added daily_automation.yml (GitHub Actions) | AI Assistant |
+| 2026-08-14 | Added main_pipeline.py (Master orchestrator) | AI Assistant |
+| 2026-08-14 | Removed .env dependency - all secrets in config.py | AI Assistant |
+| 2026-08-14 | Focus: Channel 1 only (Aria Future) | AI Assistant |
 
 ---
 

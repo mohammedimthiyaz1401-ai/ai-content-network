@@ -5,6 +5,7 @@ Uses Google Gemini API to generate 1500+ word scripts from viral transcripts.
 Includes SEO optimization for titles and descriptions.
 
 Cost: $0 (Gemini free tier)
+NO .env dependency - uses config.py
 """
 
 import os
@@ -12,19 +13,15 @@ import json
 import google.generativeai as genai
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Optional
-from dotenv import load_dotenv
-
-load_dotenv()
+from typing import Dict
+from config import GEMINI_API_KEY
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 SCRIPTS_DIR = DATA_DIR / "scripts"
 SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configure Gemini API
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
 
 # Channel-specific persona prompts
 CHANNEL_PERSONAS = {
@@ -36,22 +33,6 @@ You use phrases like 'Let me break this down for you', 'Here's the thing', and '
 You're passionate about AI tools, passive income, and tech lifehacks.
 You speak in first person and share personal experiences.""",
     },
-    "channel_2": {
-        "name": "Future Intelligence News",
-        "persona": """You are a premium, faceless news anchor for Future Intelligence News.
-Your tone is authoritative, professional, and slightly futuristic.
-You deliver breaking news about AI breakthroughs, crypto, space, and future tech.
-You use phrases like 'Breaking news', 'In a groundbreaking development', and 'Here's what you need to know'.
-You speak in third person and cite sources.""",
-    },
-    "channel_3": {
-        "name": "The Mystery Algorithm",
-        "persona": """You are the narrator for The Mystery Algorithm - a deep, mysterious voice.
-Your tone is suspenseful, intriguing, and slightly eerie.
-You explore internet mysteries, psychology hacks, and viral Reddit stories.
-You use phrases like 'What if I told you', 'The truth is stranger than fiction', and 'Nobody knows for sure'.
-You speak in second person, drawing the listener into the mystery.""",
-    },
 }
 
 
@@ -61,18 +42,6 @@ def generate_script(
     topic: str = "",
     word_count_target: int = 1500,
 ) -> Dict[str, str]:
-    """
-    Generate a 1500+ word script from a viral transcript using Gemini.
-    
-    Args:
-        transcript: Source transcript to rewrite
-        channel: Channel identifier
-        topic: Video topic/title
-        word_count_target: Target word count (minimum 1500)
-    
-    Returns:
-        Dict with title, script, description, keywords
-    """
     if channel not in CHANNEL_PERSONAS:
         raise ValueError(f"Unknown channel: {channel}")
     
@@ -116,12 +85,9 @@ Generate the JSON output now:"""
     
     response = model.generate_content(prompt)
     
-    # Parse response
     try:
-        # Clean up response text
         response_text = response.text.strip()
         
-        # Remove markdown code block if present
         if response_text.startswith("```"):
             response_text = response_text.split("\n", 1)[1]
         if response_text.endswith("```"):
@@ -129,7 +95,6 @@ Generate the JSON output now:"""
         
         result = json.loads(response_text)
         
-        # Validate word count
         script_words = len(result.get("script", "").split())
         print(f"[SCRIPTWRITER] Generated: {script_words} words")
         
@@ -148,7 +113,6 @@ Generate the JSON output now:"""
         print(f"[ERROR] Failed to parse Gemini response: {e}")
         print(f"[DEBUG] Response text: {response.text[:500]}")
         
-        # Return raw response as fallback
         return {
             "title": topic or "Untitled Video",
             "script": response.text,
@@ -158,16 +122,6 @@ Generate the JSON output now:"""
 
 
 def generate_seo_metadata(script_data: Dict, channel: str) -> Dict:
-    """
-    Generate enhanced SEO metadata using Gemini.
-    
-    Args:
-        script_data: Generated script data
-        channel: Channel identifier
-    
-    Returns:
-        Enhanced script data with SEO metadata
-    """
     persona = CHANNEL_PERSONAS.get(channel, CHANNEL_PERSONAS["channel_1"])
     
     prompt = f"""You are an expert YouTube SEO specialist.
@@ -199,7 +153,6 @@ Generate the JSON now:"""
         
         seo_data = json.loads(response_text)
         
-        # Merge with original script data
         script_data["seo"] = seo_data
         script_data["title"] = seo_data.get("title", script_data.get("title"))
         script_data["description"] = seo_data.get("description", script_data.get("description"))
@@ -213,16 +166,6 @@ Generate the JSON now:"""
 
 
 def save_script(script_data: Dict, channel: str) -> str:
-    """
-    Save generated script to file.
-    
-    Args:
-        script_data: Script content
-        channel: Channel identifier
-    
-    Returns:
-        Path to saved file
-    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"script_{channel}_{timestamp}.json"
     filepath = SCRIPTS_DIR / filename
@@ -230,7 +173,6 @@ def save_script(script_data: Dict, channel: str) -> str:
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(script_data, f, indent=2, ensure_ascii=False)
     
-    # Also save plain text version
     txt_filename = f"script_{channel}_{timestamp}.txt"
     txt_filepath = SCRIPTS_DIR / txt_filename
     
@@ -254,34 +196,18 @@ def generate_full_video_script(
     topic: str = "",
     enhance_seo: bool = True,
 ) -> Dict:
-    """
-    Complete script generation pipeline.
-    
-    Args:
-        channel: Channel identifier
-        transcript: Source viral transcript
-        topic: Video topic
-        enhance_seo: Whether to add SEO metadata
-    
-    Returns:
-        Complete script data dict
-    """
     print(f"\n{'='*60}")
     print(f"SCRIPT GENERATION PIPELINE")
     print(f"Channel: {CHANNEL_PERSONAS[channel]['name']}")
     print(f"{'='*60}")
     
-    # Step 1: Generate main script
     script_data = generate_script(transcript, channel, topic)
     
-    # Step 2: Enhance SEO if requested
     if enhance_seo:
         script_data = generate_seo_metadata(script_data, channel)
     
-    # Step 3: Save to files
     save_script(script_data, channel)
     
-    # Step 4: Log stats
     word_count = len(script_data.get("script", "").split())
     print(f"\n[COMPLETE] Script generated successfully!")
     print(f"[STATS] Words: {word_count}")
@@ -290,13 +216,11 @@ def generate_full_video_script(
     return script_data
 
 
-# Quick test
 if __name__ == "__main__":
     print("=" * 60)
     print("SCRIPTWRITER - TEST MODE")
     print("=" * 60)
     
-    # Test transcript
     test_transcript = """
     Artificial intelligence is changing everything. We're seeing tools that can write code,
     generate images, create music, and even have conversations. The question is - how can
@@ -320,7 +244,7 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"[ERROR] Test failed: {e}")
-        print("[HINT] Make sure GEMINI_API_KEY is set in .env")
+        print("[HINT] Check GEMINI_API_KEY in config.py")
     
     print("=" * 60)
     print("TEST COMPLETE")

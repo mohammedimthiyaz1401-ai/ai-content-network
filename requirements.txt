@@ -1,5 +1,4 @@
 replicate
-python-dotenv
 requests
 google-generativeai
 moviepy

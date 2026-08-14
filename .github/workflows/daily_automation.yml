@@ -6,8 +6,8 @@ name: Daily Content Generation
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # 6:00 AM UTC daily
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 env:
   PYTHON_VERSION: '3.11'
@@ -35,38 +35,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
       
-      - name: Load API keys
+      - name: Run Pipeline
         env:
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          YOUTUBE_CHANNEL_ID_CH1: ${{ secrets.YOUTUBE_CHANNEL_ID_CH1 }}
-          YOUTUBE_CHANNEL_ID_CH2: ${{ secrets.YOUTUBE_CHANNEL_ID_CH2 }}
-          YOUTUBE_CHANNEL_ID_CH3: ${{ secrets.YOUTUBE_CHANNEL_ID_CH3 }}
-        run: |
-          echo "REPLICATE_API_TOKEN=${{ secrets.REPLICATE_API_TOKEN }}" >> .env
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env
-      
-      - name: Step 1 - Trend Sniffer
-        run: python src/trend_sniffer.py
-        timeout-minutes: 15
-      
-      - name: Step 2 - Scriptwriter
-        run: python src/scriptwriter.py
-        timeout-minutes: 10
-      
-      - name: Step 3 - Media Generator
-        run: python src/media_generator.py
-        timeout-minutes: 30
-      
-      - name: Step 4 - Video Assembler
-        run: python src/video_assembler.py
-        timeout-minutes: 60
-      
-      - name: Step 5 - Upload to YouTube
-        run: python src/youtube_uploader.py
-        timeout-minutes: 30
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+        run: python src/main_pipeline.py
+        timeout-minutes: 120
       
       - name: Generate report
         if: always()
