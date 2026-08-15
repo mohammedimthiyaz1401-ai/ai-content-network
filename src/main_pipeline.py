@@ -36,7 +36,7 @@ from media_generator import (
 )
 from video_assembler import assemble_video, generate_thumbnail
 from shorts_clipper import clip_shorts
-from sadtalker_host import generate_host_intro
+from sadtalker_host import generate_host_intro, get_host_portrait
 from youtube_uploader import upload_video, batch_upload
 from validation import validate_video
 from reporting import build_report, render_human, save_report
@@ -181,14 +181,16 @@ def run_video_assembler(channel: str, media_list: list) -> list:
         audio_path = media["audio_path"]
         
         try:
-            # TALKING HOST: generate intro + one transition clip (uses host image + voice)
+            # TALKING HOST: generate intro + one transition clip (uses a dedicated
+            # host PORTRAIT with a real face - topic images fail SadTalker face detection)
             host_clips = []
             host_degraded = False
-            if image_paths:
+            host_portrait = get_host_portrait()
+            if host_portrait:
                 intro_line = script.get("hook", "")[:90] or script.get("title", "Welcome back to Aria Future.")[:90]
                 print("[HOST] Generating talking-host intro...")
                 host_intro = generate_host_intro(
-                    host_image=image_paths[0],
+                    host_image=host_portrait,
                     channel=channel,
                     line=intro_line,
                 )
@@ -199,13 +201,15 @@ def run_video_assembler(channel: str, media_list: list) -> list:
                 if len(image_paths) > 5:
                     print("[HOST] Generating talking-host transition...")
                     host_trans = generate_host_intro(
-                        host_image=image_paths[3],
+                        host_image=host_portrait,
                         channel=channel,
                         line="Let's get into it.",
                     )
                     if host_trans["clip_path"]:
                         host_clips.append(host_trans["clip_path"])
                     host_degraded = host_degraded or host_trans.get("degraded", True)
+            else:
+                print("[HOST] No host portrait found - skipping talking host")
             
             print("[VIDEO] Assembling long-form video...")
             video_path = assemble_video(

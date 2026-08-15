@@ -35,6 +35,24 @@ HOST_DIR.mkdir(parents=True, exist_ok=True)
 # SadTalker (Apache-2.0, open source). Version pinned (NOT :latest tag).
 SADTALKER_MODEL = "cjwbw/sadtalker:a519cc0cfebaaeade068b23899165a11ec76aaa1d2b313d40d214f204ec957a3"
 
+# Canonical host portrait for Aria Future. SadTalker requires a REAL,
+# detectable face in the source image - topic/screenshot images without a
+# face cause server-side failure ("exceptions must derive from BaseException").
+PORTRAIT_CANDIDATES = [
+    Path(__file__).parent.parent / "assets" / "branding" / "profile.jpg",
+    Path(__file__).parent.parent / "assets" / "avatars" / "candidates" / "studio_mic_spotlight.png",
+    Path(__file__).parent.parent / "assets" / "avatars" / "candidates" / "bright_office_laptop.png",
+    Path(__file__).parent.parent / "assets" / "avatars" / "candidates" / "library_laptop.png",
+]
+
+
+def get_host_portrait() -> str:
+    """Return the best available host portrait (a REAL face image) or ''."""
+    for p in PORTRAIT_CANDIDATES:
+        if p.exists():
+            return str(p)
+    return ""
+
 INSTAGRAM_REQUEST_INTERVAL = 12  # seconds (share Replicate rate limit)
 _LAST_CALL = 0
 
