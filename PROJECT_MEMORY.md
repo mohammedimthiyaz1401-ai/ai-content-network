@@ -430,6 +430,11 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
 🔜 LATER (deferred): analytics scorecard, Instagram Reels posting (user said
    "not required as of now, future task").
 
+DECLINED 2026-08-15: mobile/Telegram -> opencode fix bridge (opencode serve +
+   bridge bot, or opencode web + Tailscale). User SKIPPED: laptop not always-on
+   (only ~1-2h evenings), no cheap VPS. Pipeline continues as-is: owner opens
+   laptop in the evening and reviews/pastes Telegram errors manually.
+
 KNOWN ISSUE - FULL PIPELINE TIMING:
    - Split solved this: each half-day run is 1 long + 2 shorts, still ~100+ min
      on GitHub Actions (sequential Replicate calls + MoviePy 8-min encode).
