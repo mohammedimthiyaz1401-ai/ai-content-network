@@ -69,3 +69,13 @@ LONG_FORM_SIZE = (1920, 1080)
 SHORTS_SIZE = (1080, 1920)
 FPS = 30
 IMAGE_DURATION = 5  # seconds per image
+
+# ============================================================
+# DAILY TARGETS - split into halves for two runs/day
+# Morning run:  1 long + 2 shorts (LONGFORM_TARGET=1, SHORTS_TARGET=2)
+# Night run:    1 long + 2 shorts (same)
+# Full run (manual): 2 long + 4 shorts (defaults below)
+# Each run stays well under the 120-min workflow cap.
+# ============================================================
+LONGFORM_TARGET = int(os.getenv("LONGFORM_TARGET", "2"))
+SHORTS_TARGET = int(os.getenv("SHORTS_TARGET", "4"))

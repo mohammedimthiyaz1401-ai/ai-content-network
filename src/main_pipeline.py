@@ -27,7 +27,7 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import ACTIVE_CHANNELS, CHANNELS
+from config import ACTIVE_CHANNELS, CHANNELS, LONGFORM_TARGET, SHORTS_TARGET
 from trend_sniffer import get_trending_topics, analyze_viral_potential
 from scriptwriter import generate_full_video_script
 from media_generator import (
@@ -51,8 +51,8 @@ VIDEOS_DIR = DATA_DIR / "videos"
 VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
 
 DAILY_TARGETS = {
-    "longform": 2,
-    "shorts": 4,
+    "longform": LONGFORM_TARGET,
+    "shorts": SHORTS_TARGET,
 }
 
 

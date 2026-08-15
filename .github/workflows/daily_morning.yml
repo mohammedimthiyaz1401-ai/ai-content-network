@@ -1,0 +1,78 @@
+# daily_morning.yml
+# Morning run: 1 long-form + 2 shorts (Aria Future)
+# Scheduled at 06:00 UTC. Stays well under the 120-min cap.
+
+name: Daily Morning Content
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Run Pipeline (Morning Half)
+        env:
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID_CH1 }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LONGFORM_TARGET: '1'
+          SHORTS_TARGET: '2'
+        run: python src/main_pipeline.py
+        timeout-minutes: 120
+
+      - name: Generate report
+        if: always()
+        run: |
+          echo "## Morning Content Report" >> $GITHUB_STEP_SUMMARY
+          echo "Date: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "Run: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f data/reports/channel_1_latest.txt ]; then
+            cat data/reports/channel_1_latest.txt >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### No report generated (pipeline failed before reporting)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Generated Content Files" >> $GITHUB_STEP_SUMMARY
+          ls -la data/videos/ 2>/dev/null || echo "No videos generated"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-content-${{ github.run_number }}
+          path: |
+            data/videos/
+            data/scripts/
+            data/reports/
+          retention-days: 7
