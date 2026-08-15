@@ -1,37 +1,32 @@
-"""Runner-side diagnostic: reproduce SadTalker exactly as the pipeline does,
-capture FULL traceback + prediction error + env info."""
+"""Runner-side diagnostic v2: self-contained - generates its own test image
+from the committed voice sample + a local PIL image so it doesn't need data/.
+Captures FULL traceback + prediction error."""
 import os
 import sys
 import traceback
-import glob
 import httpx
 import replicate
 from replicate import files
+from PIL import Image, ImageDraw
 
 print("PYTHON:", sys.version)
-print("REPLICATE_VERSION:", getattr(replicate, "__version__", "n/a"))
 print("HTTPX_VERSION:", httpx.__version__)
+
+# Build a test portrait (a face-ish image is NOT required to reproduce the
+# SDK error - SadTalker needs any valid image + audio URI to start a prediction).
+test_img = "diag_portrait.png"
+img = Image.new("RGB", (512, 512), (40, 40, 90))
+d = ImageDraw.Draw(img)
+d.ellipse([156, 80, 356, 280], fill=(224, 190, 170))  # face
+d.rectangle([100, 260, 412, 512], fill=(30, 30, 60))   # body
+img.save(test_img)
+
+voice = "assets/voice_samples/channel_1.wav"
+print("voice exists:", os.path.exists(voice))
 
 MODEL = "cjwbw/sadtalker:a519cc0cfebaaeade068b23899165a11ec76aaa1d2b313d40d214f204ec957a3"
 
-imgs = sorted(glob.glob("data/images/*.png"))
-print("images found:", len(imgs), imgs[:2])
-if not imgs:
-    print("NO IMAGES - cannot test")
-    sys.exit(2)
-img = imgs[0]
-
-# voice sample from assets
-voice = None
-for cand in ["assets/voice_samples/channel_1.wav",
-             "assets/voice_samples/channel_1_aria.wav",
-             "assets/voice_samples/channel_1_jenny.wav"]:
-    if os.path.exists(cand):
-        voice = cand
-        break
-print("voice:", voice)
-
-uri = files.create(img).urls["get"]
+uri = files.create(test_img).urls["get"]
 print("img uri ok:", uri[:30])
 aud_uri = files.create(voice).urls["get"]
 print("audio uri ok:", aud_uri[:30])
