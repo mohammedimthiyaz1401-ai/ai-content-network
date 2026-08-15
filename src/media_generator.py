@@ -154,7 +154,7 @@ VOICE_CONFIG = {
 }
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=15, max=60))
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=15, max=60), reraise=True)
 def generate_image_sdxl(prompt: str, channel: str = "channel_1", width: int = 1024, height: int = 1024) -> str:
     """Primary image generation method (Replicate SDXL). Uses specific version ID."""
     seed = CHANNEL_SEEDS.get(channel, 0)
@@ -251,7 +251,7 @@ def generate_image(prompt: str, channel: str = "channel_1") -> str:
     raise Exception("All image generation methods failed")
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=15, max=60))
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=15, max=60), reraise=True)
 def generate_voice_xtts(text: str, channel: str = "channel_1", cleanup: bool = True) -> str:
     """Primary voice generation method (Replicate XTTS-v2).
     Requires a 'speaker' voice-cloning reference sample per channel.

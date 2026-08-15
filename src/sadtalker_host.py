@@ -68,7 +68,7 @@ def _throttle():
     _LAST_CALL = time.time()
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=2, min=10, max=30))
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=2, min=10, max=30), reraise=True)
 def generate_talking_clip_sadtalker(
     source_image: str,
     audio_path: str,
