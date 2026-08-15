@@ -216,6 +216,24 @@ def batch_upload(videos: list, channel: str, privacy_status: str = "private") ->
             )
             result["success"] = True
             results.append(result)
+            
+            # Alert the owner the moment a private video lands for review
+            if result.get("success") and result.get("video_id"):
+                try:
+                    from telegram_notifier import send_upload_notification
+                    notif = dict(video)
+                    notif.update({
+                        "video_id": result.get("video_id"),
+                        "url": result.get("url"),
+                        "is_short": video.get("is_short", False),
+                        "duration_s": (
+                            video.get("duration_s")
+                            or video.get("validation", {}).get("metadata", {}).get("duration")
+                        ),
+                    })
+                    send_upload_notification(notif)
+                except Exception as e:
+                    print(f"[WARN] Upload notification failed: {e}")
         
         except Exception as e:
             print(f"[ERROR] Upload failed: {e}")

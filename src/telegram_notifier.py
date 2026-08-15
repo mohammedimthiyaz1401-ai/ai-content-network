@@ -57,6 +57,35 @@ def send_report(render_human: str) -> bool:
     return send_message(header + render_human)
 
 
+def send_upload_notification(video: dict) -> bool:
+    """
+    Notify the owner when a video is uploaded to YouTube as PRIVATE.
+    Message includes the title, type, duration, and the direct review URL
+    so the owner can watch -> validate -> make public.
+    """
+    if not telegram_configured():
+        return False
+
+    title = video.get("title", "Untitled video")
+    video_id = video.get("video_id", "")
+    url = video.get("url", f"https://youtube.com/watch?v={video_id}") if video_id else ""
+    kind = "SHORT" if video.get("is_short") else "LONG-FORM"
+    dur = video.get("duration_s")
+    dur_str = f"{int(dur//60)}:{int(dur%60):02d}" if dur else "?"
+
+    lines = [
+        "<b>📤 New video uploaded (PRIVATE - awaiting your review)</b>",
+        f"\n🎬 <b>{title}</b>",
+        f"\nType: {kind}",
+        f"Duration: {dur_str}",
+    ]
+    if url:
+        lines.append(f"\n🔗 <a href=\"{url}\">Review on YouTube Studio</a>")
+    lines.append("\n<i>Video is PRIVATE. Watch, validate, then set to Public.</i>")
+
+    return send_message("\n".join(lines))
+
+
 if __name__ == "__main__":
     print("TELEGRAM NOTIFIER - self test")
     if telegram_configured():
