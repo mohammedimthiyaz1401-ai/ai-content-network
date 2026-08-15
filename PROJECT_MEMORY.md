@@ -1,9 +1,9 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-15 (morning run SUCCESS; SadTalker bug fixed; per-upload Telegram alerts; local-model GPU path + RunPod scripts added)
+# LAST UPDATED: 2026-08-15 (SADTALKER ROOT CAUSE FOUND + FIXED: feed dedicated host PORTRAIT with real face; runner diag + local repro both confirmed)
 # STATUS: IN PROGRESS
-# CURRENT PHASE: Validating SadTalker talking-host quality in night run; deciding on GPU server for Ch.2
+# CURRENT PHASE: Verifying SadTalker animated host on next run; deciding on GPU server for Ch.2
 # ============================================================
 # ============================================================
 
@@ -368,6 +368,26 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
    - FIX: reraise=True on ALL @retry decorators (media_generator.generate_image_sdxl,
      generate_voice_xtts, sadtalker_host.generate_talking_clip_sadtalker).
    - Verified via local simulation (real FakeModelError caught). Live test = night run.
+   - ❗ SUPERSEEDED (see Step 25l): reraise=True was NOT the real fix. The error message
+     was faithful to the actual Replicate prediction failure - see root cause below.
+✅ Step 25l: SADTALKER ROOT CAUSE FOUND + FIXED (2026-08-15, commits 03a17bc/a11f196/9cfc4d3)
+   - Night run (31882911455) completed SUCCESS (~121 min, 3/3 uploaded) but SadTalker STILL
+     failed -> static portrait fallback again. Full log saved %TEMP%\opencode\night_run_log.txt.
+   - Dispatched .github/workflows/sadtalker_diag.yml (id 335051067) -> REAL traceback:
+     replicate/run.py:81 raise ModelError(prediction) ->
+     "replicate.exceptions.ModelError: exceptions must derive from BaseException".
+     So the prediction genuinely FAILED server-side; the SDK faithfully reported prediction.error.
+   - KEY EXPERIMENT: same ModelError reproduces LOCALLY with a synthetic faceless image.
+     But assets/branding/profile.jpg (real face) + channel_1_aria.wav -> SUCCESS (real out.mp4).
+     => ROOT CAUSE: pipeline fed SadTalker a TOPIC image (image_paths[0]/[3], e.g. "apartment
+     interior") with NO detectable face. SadTalker face detection fails -> model raises a string
+     error server-side -> SDK shows "exceptions must derive from BaseException". Local repros
+     earlier "succeeded" only because those data/images/*.png happened to contain faces.
+   - FIX (commit 9cfc4d3): src/sadtalker_host.py adds PORTRAIT_CANDIDATES +
+     get_host_portrait() returning a dedicated REAL-FACE portrait (assets/branding/profile.jpg
+     first). src/main_pipeline.py now passes host_portrait to generate_host_intro instead of
+     topic images. compile OK + get_host_portrait resolves correctly. Pushed to master.
+   - NEXT VERIFY: next run should show SadTalker "used" (animated host) for the first time.
 ✅ Step 25i: KEN BURNS + CROSSFADE (2026-08-15, commit a3763f5)
    - video_assembler._ken_burns(): slow zoom (in/out alternating) centered on a fixed
      output canvas (fixes off-size bug). create_video_from_images adds CrossFadeOut(0.5).
@@ -390,10 +410,11 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
 # 8. WHAT'S PENDING (NEXT STEPS)
 # ============================================================
 
-🔜 STEP 26: NIGHT RUN (18:00 UTC) - first live test of SadTalker reraise fix
-   - Check Telegram for per-upload PRIVATE-review alerts + daily report.
-   - Confirm fallback log: does SadTalker show "used" (animated host) now?
-   - Morning run (pre-fix) showed static-portrait fallback -> user said "dull".
+🔜 STEP 26: NEXT RUN = FIRST VERIFY OF THE REAL SADTALKER FIX (18:00 UTC night run)
+   - The fix (commit 9cfc4d3) feeds a dedicated real-face portrait. Watch fallback log:
+     does SadTalker finally show "used" (animated host) instead of static fallback?
+   - If still failing: check that profile.jpg is committed (it is) + runner has it
+     (assets/branding/profile.jpg). Diagnostic workflow id 335051067 available to re-run.
 
 🔜 STEP 27: Review + publish tonight's uploads on YouTube Studio
    - User validates PRIVATE videos, then makes public manually.
@@ -532,8 +553,14 @@ IF ARTIFACT DOWNLOAD IS CORRUPT/TRUNCATED:
   to get a FRESH URL, then download. Old URL -> BadZipFile/142-byte file.
 
 IF SADTALKER ERRORS "exceptions must derive from BaseException":
-- tenacity raise-from-fut bug. FIXED via reraise=True (commit 9c800ec).
-- Confirm every @retry decorator has reraise=True (media_generator + sadtalker_host).
+- ❗ REAL ROOT CAUSE (2026-08-15): the source_image has NO detectable face.
+  SadTalker face detection fails server-side -> model raises a string error ->
+  SDK faithfully reports it as prediction.error (replicate/run.py:81 ModelError).
+  This reproduces LOCALLY too (verified with synthetic faceless image).
+- FIX: feed a DEDICATED real-face portrait, NOT a topic/screenshot image.
+  src/sadtalker_host.py get_host_portrait() returns assets/branding/profile.jpg
+  (verified SUCCESS -> real out.mp4). Commit 9cfc4d3 wires it into the pipeline.
+- The tenacity reraise=True change (commit 9c800ec) was harmless but NOT the fix.
 
 IF XTTS VOICE FAILS (422 "Does not match format 'uri'"):
 - speaker must be an UPLOADED URI. FIXED via _get_speaker_url() (replicate.files.create).
