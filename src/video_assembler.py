@@ -415,13 +415,26 @@ def splice_host_clips(
       Returns a concatenated video with host segments interleaved.
 
     host_clips: list of paths. Each can be an animated MP4 (SadTalker) or
-    a static image (fallback). Static images get IMAGE_DURATION each.
+    a static image (fallback). STATIC images are SKIPPED: they carry no audio
+    and prepending them creates a silent dead-zone before the voiceover
+    ("video plays, then audio starts" bug). Only animated MP4 clips that have
+    their own audio are spliced.
     """
     if not host_clips:
         return video
 
-    segments = [VideoFileClip(p) if p.lower().endswith(".mp4")
-                else ImageClip(p).with_duration(IMAGE_DURATION) for p in host_clips]
+    segments = []
+    for p in host_clips:
+        if p.lower().endswith(".mp4"):
+            try:
+                segments.append(VideoFileClip(p))
+            except Exception as e:
+                print(f"[WARN] Host MP4 load failed, skipping: {e}")
+        else:
+            print(f"[HOST] Skipping static host clip (no audio): {Path(p).name}")
+
+    if not segments:
+        return video
 
     # Resize the base video AND host segments to a common size for splicing
     host = []
