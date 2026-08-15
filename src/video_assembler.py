@@ -193,15 +193,21 @@ def add_subtitles(
     video: CompositeVideoClip,
     subtitle_text: str,
     output_size: tuple = LONG_FORM_SIZE,
+    audio_path: Optional[str] = None,
 ) -> CompositeVideoClip:
     """
     Add styled subtitles to video using PIL-rendered text.
-    
+
+    Uses REAL speech timing (whisper transcription of the audio) when audio_path
+    is provided; falls back to evenly-spaced chunks when whisper isn't available
+    or for shorts (fast).
+
     Args:
         video: Input video clip
         subtitle_text: Full subtitle text
         output_size: Video size for positioning
-    
+        audio_path: Optional path to the voiceover audio (for speech-timed captions)
+
     Returns:
         Video with subtitles
     """
@@ -209,28 +215,33 @@ def add_subtitles(
         return video
     
     try:
-        words = subtitle_text.split()
-        chunk_size = 8
-        subtitle_chunks = []
-        
-        for i in range(0, len(words), chunk_size):
-            chunk = " ".join(words[i:i + chunk_size])
-            subtitle_chunks.append(chunk)
-        
+        # Real speech timing when we have the audio + whisper is available
+        if audio_path:
+            from subtitle_timing import get_timed_subtitles
+            subtitle_chunks = get_timed_subtitles(audio_path, subtitle_text[:3000])
+        else:
+            words = subtitle_text.split()
+            chunk_size = 8
+            subtitle_chunks = [{
+                "start": i * 3.0,
+                "end": (i + 1) * 3.0,
+                "text": " ".join(words[i:i + chunk_size]),
+            } for i in range(0, len(words), chunk_size)]
+
         subtitle_clips = []
-        chunk_duration = 3.0
         subtitle_height = 200
         subtitle_size = (output_size[0], subtitle_height)
         
-        for i, chunk in enumerate(subtitle_chunks):
-            start_time = i * chunk_duration
+        for chunk in subtitle_chunks:
+            start_time = chunk["start"]
+            chunk_duration = max(0.5, chunk["end"] - chunk["start"])
             
             if start_time >= video.duration:
                 break
             
             try:
-                txt_clip = _make_text_png(chunk, subtitle_size, fontsize=44)
-                txt_clip = txt_clip.with_duration(chunk_duration)
+                txt_clip = _make_text_png(chunk["text"], subtitle_size, fontsize=44)
+                txt_clip = txt_clip.with_duration(min(chunk_duration, video.duration - start_time))
                 # Position at bottom center
                 y_pos = output_size[1] - subtitle_height - 60
                 txt_clip = txt_clip.with_position(("center", y_pos))
@@ -470,7 +481,12 @@ def assemble_video(
     
     print("[4/5] Adding subtitles...")
     if subtitle_text:
-        video = add_subtitles(video, subtitle_text if not is_short else subtitle_text[:200], output_size)
+        video = add_subtitles(
+            video,
+            subtitle_text if not is_short else subtitle_text[:200],
+            output_size,
+            audio_path=audio_path if not is_short else None,
+        )
     
     print("[5/5] Adding watermark...")
     if is_short:

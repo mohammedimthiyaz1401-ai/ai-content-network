@@ -1,9 +1,10 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-15 (all 3 bugs fixed, full pipeline reaches assembly)
+# LAST UPDATED: 2026-08-15 (cloud run #1 launched; whisper timed subtitles added)
 # STATUS: IN PROGRESS
-# CURRENT PHASE: Step 24 - full pipeline verified; next = run on GitHub Actions
+# CURRENT PHASE: Step 26 - GitHub Actions cloud run #1 in progress
+# ============================================================
 # ============================================================
 
 # ⚠️ IMPORTANT: THIS FILE MUST BE UPDATED AFTER EVERY CHANGE
@@ -159,6 +160,7 @@ ai-content-network/
 │   ├── diagnostics.py          ✅ NEW (error type/message/traceback + package versions)
 │   ├── telegram_notifier.py    ✅ NEW (pushes report to Telegram - TESTED SEND OK)
 │   ├── sadtalker_host.py       ✅ NEW (talking host: SadTalker→static, URI fix)
+│   ├── subtitle_timing.py      ✅ NEW (whisper timed captions + fallback)
 │   └── youtube_uploader.py     ✅ DONE (OAuth2 refresh token)
 ├── data/
 │   ├── scripts/
@@ -293,33 +295,49 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
 ✅ Step 23: Telegram notifier TESTED LIVE (2026-08-15)
    - Bot token + chat id 798122743 in local secrets -> test message SENT & received
    - Daily report render -> Telegram push confirmed (559 chars sent)
+✅ Step 24: GitHub Secrets updated by user + voice sample swapped (2026-08-15)
+   - User updated GEMINI_API_KEY / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID on GitHub web
+   - User pushed ElevenLabs Rachel voice sample directly to GitHub (19.2s, 44.1kHz).
+   - Local synced to match (fetch/rebase). Remote master == local HEAD.
+✅ Step 25: Cloud run #1 DISPATCHED on GitHub Actions (2026-08-15)
+   - Manual workflow_dispatch (HTTP 204). Run #1 "Daily Content Generation" in progress.
+   - Passed: checkout, python setup, deps install, FFmpeg install. Now in Run Pipeline.
+   - Monitoring: https://github.com/mohammedimthiyaz1401-ai/ai-content-network/actions/runs/31869862758
+✅ Step 25b: requisites.txt SLIMMED (2026-08-15)
+   - REMOVED unused: yt-dlp, pydantic, youtube-transcript-api (trend sniffer no
+     longer scrapes YouTube). KEPT openai-whisper (used for timed subtitles).
+✅ Step 25c: TIMED SUBTITLES added (WhisperX-style) - subtitle_timing.py
+   - Whisper base model transcribes the generated audio -> REAL timestamped captions
+     (字幕 appear exactly when each phrase is spoken, vs old fixed 3s chunks).
+   - FAILSAFE: falls back to evenly-spaced chunks if whisper unavailable/fails,
+     so video assembly NEVER breaks. Shorts skip whisper (too short, keep fast).
+   - video_assembler.add_subtitles() now accepts audio_path and uses it.
 
 
 # ============================================================
 # 8. WHAT'S PENDING (NEXT STEPS)
 # ============================================================
 
-🔜 STEP 24: Update GitHub Secrets GEMINI_API_KEY + TELEGRAM_* (USER ACTION)
-   - GEMINI: https://github.com/mohammedimthiyaz1401-ai/ai-content-network/settings/secrets/actions
-     Value: AQ.Ab...[stored in load_secrets.ps1 + GitHub Secret]
-   - TELEGRAM_BOT_TOKEN stored in scripts/load_secrets.ps1 + add as GitHub Secret
-   - TELEGRAM_CHAT_ID: 798122743
+🔜 STEP 26: WAIT FOR CLOUD RUN #1 RESULT (in progress)
+   - Check Telegram: daily report OR "<b>Pipeline FAILED</b>" diagnostic expected.
+   - Check GitHub Actions artifacts (data/videos, scripts, reports).
+   - First cloud effort - watch for YouTube IP-block (should be gone now - no scraping),
+     Replicate credits, whisper model download time on Actions.
 
-🔜 STEP 25: Verify SadTalker host clip end-to-end (not yet seen in live run)
+🔜 STEP 27: Verify SadTalker host clip end-to-end (not yet seen in a live run)
    - host_clips/ was empty on last full run - confirm animate path or fallback
 
-🔜 STEP 26: Run full pipeline on GitHub Actions
-   - Trigger workflow manually (once Secrets updated)
-   - Check if 2 long + 4 shorts produced + uploaded as Private
+🔜 STEP 28: Update GitHub Secrets GEMINI_API_KEY + TELEGRAM_* (DONE by user 2026-08-15)
+   - DONE. Values stored in load_secrets.ps1 + GitHub Secrets.
 
-🔜 STEP 27: Manual publish on YouTube
+🔜 STEP 29: Manual publish on YouTube
    - Go to YouTube Studio, find Private video, click Publish
 
-🔜 STEP 28: Create Channel 2 & 3 (separate accounts)
+🔜 STEP 30: Create Channel 2 & 3 (separate accounts)
    - Create new Gmail for each, YouTube channel, OAuth2, update config
 
-🔜 LATER (deferred by user 2026-08-15): analytics scorecard (YouTube Analytics
-   nightly → Telegram). NOT building now - channel is brand new.
+🔜 LATER (deferred): analytics scorecard, Instagram Reels posting (user said
+   "not required as of now, future task").
 
 KNOWN ISSUE - FULL PIPELINE TIMING:
    - 1 full local run >60 min (sequential Replicate calls + MoviePy 8-min encode).
@@ -499,16 +517,14 @@ GITHUB SECRETS: https://github.com/mohammedimthiyaz1401-ai/ai-content-network/se
 When starting a new session, paste this file and say:
 
 "I am building an AI Content Network project. Here is the memory file 
-with all progress. Last status: All 3 bugs fixed & verified 2026-08-15 -
-(1) XTTS voice now uses uploaded URI speaker (real audio, not silent),
-(2) SadTalker uses uploaded URIs, (3) Replicate SDK 1.0.7 output parsed.
-Trend sniffer rewritten to Gemini brainstorm (no YouTube scraping).
-Telegram notifier tested live (message received). Full pipeline reaches
-final assembly producing real 8-min videos; one full run >60 min so
-GitHub Actions nightly is the production path. Blocker: user must update
-GitHub Secrets GEMINI_API_KEY + TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID.
-Next step: update GitHub Secrets, verify SadTalker host clip, run pipeline
-on GitHub Actions. Continue from where we left off."
+with all progress. Last status: All bugs fixed & verified. Trend sniffer
+rewritten to Gemini brainstorm (no YouTube scraping). Telegram notifier
+tested live. Timed (whisper) subtitles added with fallback. GitHub Secrets
+updated by user (GEMINI + TELEGRAM). ElevenLabs Rachel voice sample live
+on GitHub. Cloud run #1 dispatched on GitHub Actions (run 31869862758) -
+WAITING FOR RESULT, check Telegram for the report or a failure diagnostic.
+Next step: evaluate cloud run #1 output, verify SadTalker host clip,
+fix anything the cloud run reveals. Continue from where we left off."
 
 
 # ============================================================
