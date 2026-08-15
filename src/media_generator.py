@@ -227,11 +227,13 @@ def generate_image_fallback(prompt: str, channel: str) -> str:
 def generate_image(prompt: str, channel: str = "channel_1") -> str:
     """
     FALLBACK CHAIN for image generation:
+      0. Local SDXL (GPU server - free) when USE_LOCAL_MODELS=1
       1. Replicate SDXL (premium)
       2. Local placeholder (always works)
     Returns first successful image path.
     """
     methods = [
+        ("Local SDXL", lambda: _local_image(prompt, channel)),
         ("SDXL Replicate", lambda: generate_image_sdxl(prompt, channel)),
         ("Placeholder", lambda: generate_image_fallback(prompt, channel)),
     ]
@@ -242,13 +244,22 @@ def generate_image(prompt: str, channel: str = "channel_1") -> str:
             result = method()
             # If we did NOT use the primary method, log the fallback clearly
             if name != "SDXL Replicate":
-                log_fallback("image", name, "fallback_used", "SDXL primary failed")
+                log_fallback("image", name, "fallback_used", "Replicate primary skipped/failed")
             return result
         except Exception as e:
             print(f"[IMG-METHOD] Method '{name}' failed: {e}")
             continue
     
     raise Exception("All image generation methods failed")
+
+
+def _local_image(prompt: str, channel: str) -> str:
+    """Route to local SDXL if available; raises FileNotFoundError otherwise."""
+    import local_models
+    if not local_models.should_use_local():
+        raise FileNotFoundError("Local models not configured (USE_LOCAL_MODELS=1 + /models)")
+    seed = CHANNEL_SEEDS.get(channel, 0)
+    return local_models.generate_image_local(prompt, seed)
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=15, max=60), reraise=True)
@@ -342,12 +353,14 @@ def generate_voice_fallback(text: str, channel: str) -> str:
 def generate_voice(text: str, channel: str = "channel_1") -> str:
     """
     FALLBACK CHAIN for voice generation:
+      0. Local XTTS (GPU server - free) when USE_LOCAL_MODELS=1
       1. Replicate XTTS-v2 (premium)
       2. Offline TTS (pyttsx3)
       3. Silent audio (ensures video assembles)
     Returns first successful audio path.
     """
     methods = [
+        ("Local XTTS", lambda: _local_voice(text, channel)),
         ("XTTS Replicate", lambda: generate_voice_xtts(text, channel)),
         ("Offline TTS", lambda: generate_voice_fallback(text, channel)),
     ]
@@ -357,13 +370,22 @@ def generate_voice(text: str, channel: str = "channel_1") -> str:
             print(f"[VOICE-METHOD] Trying method: {name}")
             result = method()
             if name != "XTTS Replicate":
-                log_fallback("voice", name, "fallback_used", "XTTS primary failed")
+                log_fallback("voice", name, "fallback_used", "XTTS primary skipped/failed")
             return result
         except Exception as e:
             print(f"[VOICE-METHOD] Method '{name}' failed: {e}")
             continue
     
     raise Exception("All voice generation methods failed")
+
+
+def _local_voice(text: str, channel: str) -> str:
+    """Route to local XTTS if available; raises FileNotFoundError otherwise."""
+    import local_models
+    if not local_models.should_use_local():
+        raise FileNotFoundError("Local models not configured (USE_LOCAL_MODELS=1 + /models)")
+    speaker = _get_speaker_sample(channel)
+    return local_models.generate_voice_local(text, speaker)
 
 
 def generate_video_visuals(prompt: str, channel: str, num_images: int = 10) -> list:

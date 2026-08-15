@@ -132,6 +132,27 @@ def _make_text_png(text: str, output_size: tuple, fontsize: int = 48,
     return clip
 
 
+def _ken_burns(clip, output_size: tuple, zoom_from: float = 1.0, zoom_to: float = 1.12):
+    """
+    Apply a slow Ken Burns zoom (start zoom_from, end zoom_to) so a static
+    image appears to be in motion. The moving clip is centered on an
+    output_size canvas so the final frame is always exactly output_size.
+    """
+    from moviepy import vfx, CompositeVideoClip
+    try:
+        # Fit to canvas first, then zoom over time
+        resized = clip.resized(output_size)
+        moving = resized.with_effects(
+            [vfx.Resize(lambda t: zoom_from + (zoom_to - zoom_from) * (t / max(clip.duration, 1e-3)))]
+        )
+        canvas = CompositeVideoClip([moving.with_position("center")], size=output_size)
+        canvas = canvas.with_duration(clip.duration)
+        return canvas
+    except Exception as e:
+        print(f"[WARN] Ken Burns failed, using static resize: {e}")
+        return clip.resized(output_size)
+
+
 def load_images(image_paths: List[str]) -> List[ImageClip]:
     """
     Load images and create clips.
@@ -158,7 +179,8 @@ def load_images(image_paths: List[str]) -> List[ImageClip]:
 
 def create_video_from_images(image_paths: List[str], output_size: tuple = LONG_FORM_SIZE) -> Optional[CompositeVideoClip]:
     """
-    Create video from images with proper sizing.
+    Create video from images with proper sizing + Ken Burns motion + crossfades
+    so slides aren't a static slideshow.
     
     Args:
         image_paths: List of image paths
@@ -174,19 +196,35 @@ def create_video_from_images(image_paths: List[str], output_size: tuple = LONG_F
         return None
     
     resized_clips = []
-    for clip in clips:
+    for i, clip in enumerate(clips):
         try:
-            resized = clip.resized(output_size)
-            resized_clips.append(resized.with_duration(clip.duration))
+            # Alternate zoom direction for visual variety
+            if i % 2 == 0:
+                moving = _ken_burns(clip, output_size, zoom_from=1.0, zoom_to=1.12)
+            else:
+                moving = _ken_burns(clip, output_size, zoom_from=1.12, zoom_to=1.0)
+            resized_clips.append(moving)
         except Exception as e:
             print(f"[WARN] Failed to resize clip: {e}")
-            continue
+            try:
+                resized_clips.append(clip.resized(output_size))
+            except Exception:
+                continue
     
     if not resized_clips:
         print("[ERROR] All clips failed to resize")
         return None
     
-    return concatenate_videoclips(resized_clips, method="compose")
+    # Crossfade between slides so cuts aren't hard
+    from moviepy import vfx
+    crossfade = 0.5
+    clips_out = []
+    for i, c in enumerate(resized_clips):
+        if i < len(resized_clips) - 1:
+            c = c.with_effects([vfx.CrossFadeOut(crossfade)])
+        clips_out.append(c)
+    
+    return concatenate_videoclips(clips_out, method="compose")
 
 
 def add_subtitles(

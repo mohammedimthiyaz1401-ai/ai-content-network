@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 scripts/load_secrets.ps1
+scripts/server_secrets.env
+scripts/server_secrets.env.local
 
 # Python
 __pycache__/

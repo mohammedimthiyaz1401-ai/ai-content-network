@@ -138,6 +138,7 @@ def generate_host_clip(
     Returns a path to either an animated MP4 (premium) or the static image (fallback).
     """
     methods = [
+        ("Local SadTalker", lambda: _local_sadtalker(source_image, audio_path, channel)),
         ("SadTalker", lambda: generate_talking_clip_sadtalker(source_image, audio_path, channel)),
         ("Static portrait", lambda: generate_host_fallback(source_image, audio_path, channel)),
     ]
@@ -149,6 +150,14 @@ def generate_host_clip(
             print(f"[HOST-METHOD] '{name}' failed: {e}")
             continue
     raise Exception("All host methods failed")
+
+
+def _local_sadtalker(source_image: str, audio_path: str, channel: str) -> str:
+    """Route to local SadTalker if available; raises FileNotFoundError otherwise."""
+    import local_models
+    if not local_models.should_use_local():
+        raise FileNotFoundError("Local models not configured (USE_LOCAL_MODELS=1 + /models)")
+    return local_models.generate_host_clip_local(source_image, audio_path, channel)
 
 
 # ------------------------------------------------------------------
