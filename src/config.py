@@ -29,8 +29,11 @@ YOUTUBE_REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN", "")
 
 # ============================================================
 # YOUTUBE CHANNEL ID (Aria Future only)
+# Public data (not secret); env var overrides when set.
 # ============================================================
-YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID", "")
+YOUTUBE_CHANNEL_ID = os.getenv(
+    "YOUTUBE_CHANNEL_ID", "UCd5yt5eiM97UDyWkt9mZGQw"
+)
 
 # ============================================================
 # TELEGRAM NOTIFICATION (Daily report delivery)
