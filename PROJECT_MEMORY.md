@@ -1,9 +1,9 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-15 (cloud run #1 launched; whisper timed subtitles added)
+# LAST UPDATED: 2026-08-15 (morning run SUCCESS; SadTalker bug fixed; per-upload Telegram alerts; local-model GPU path + RunPod scripts added)
 # STATUS: IN PROGRESS
-# CURRENT PHASE: Step 26 - GitHub Actions cloud run #1 in progress
+# CURRENT PHASE: Validating SadTalker talking-host quality in night run; deciding on GPU server for Ch.2
 # ============================================================
 # ============================================================
 
@@ -105,16 +105,25 @@ TALKING HOST (SadTalker):
 - FALLBACK: if SadTalker fails -> static portrait (video still assembles)
 - MuseTalk/LatentSync REJECTED: they need existing video to lip-sync;
   SadTalker is the only one that works from ONE photo + audio (our use case)
-- NOTE: Not yet verified end-to-end in a live run (host_clips dir empty on last
-  test; may have hit rate limits). Needs a full-run check.
+- BUG FIXED 2026-08-15 (commit 9c800ec): SadTalker + XTTS + SDXL retries were
+  crashing with "exceptions must derive from BaseException". Cause: tenacity
+  does `raise retry_exc from fut.exception()` and replicate's stored error isn't
+  a clean BaseException -> Python raises TypeError. FIX: added reraise=True to
+  ALL tenacity @retry decorators in media_generator.py + sadtalker_host.py.
+  Night run (18:00 UTC) is first live test of the fix.
+- STATUS: morning run (09:10 UTC) STILL showed SadTalker FAILED (ran before fix
+  was dispatched). Static portrait fallback used -> the "dull, no one talking"
+  look the user complained about. Fix is now pushed + live for night run.
 
 REPLICATE API:
 - Status: ✅ WORKING (tested - SDXL image generated)
 - URL: https://replicate.com/account/api-tokens
-- Credit: $5 added (2026-08-14)
+- Credit: $5 added (2026-08-14); EMAIL from Replicate 2026-08-15: ~$2.35 left,
+  estimated 21h remaining at current burn (~$1/run). Top-up $5 for ~1 more week
+  of daily runs, OR move to GPU server for $0 Replicate cost.
 - Model: stability-ai/sdxl (must use version ID, NOT :latest tag)
 - Working version: 7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc
-- Rate limit: 6 req/min with <$5 credit (small delay between calls)
+- Rate limit: 6 req/min with <$5 credit (small delay between calls) - seen 429s
 
 
 # ============================================================
@@ -124,13 +133,19 @@ REPLICATE API:
 | Secret Name | Status |
 |-------------|--------|
 | REPLICATE_API_TOKEN | ✅ Updated with real token |
-| GEMINI_API_KEY | 🔜 NEEDS UPDATE - new key works locally, user must update on GitHub |
+| GEMINI_API_KEY | ✅ Updated by user (new AQ.Ab key) 2026-08-15 |
 | YOUTUBE_CLIENT_ID | ✅ Added |
 | YOUTUBE_CLIENT_SECRET | ✅ Added |
 | YOUTUBE_REFRESH_TOKEN | ✅ Added |
-| YOUTUBE_CHANNEL_ID | ✅ Added |
-| TELEGRAM_BOT_TOKEN | 🔜 NEEDS ADDING on GitHub (token = 8916953161:...TESTED working locally) |
-| TELEGRAM_CHAT_ID | 🔜 NEEDS ADDING on GitHub (chat = 798122743) |
+| YOUTUBE_CHANNEL_ID | ✅ Added (name is actually YOUTUBE_CHANNEL_ID_CH1 - see note) |
+| TELEGRAM_BOT_TOKEN | ✅ Added by user 2026-08-15 (8916953161:...TESTED working) |
+| TELEGRAM_CHAT_ID | ✅ Added by user 2026-08-15 (798122743) |
+
+IMPORTANT 2026-08-15: GitHub secret is named YOUTUBE_CHANNEL_ID_CH1, but the
+workflow was reading YOUTUBE_CHANNEL_ID -> env var was EMPTY in the first run.
+FIXED: daily_morning/night workflows map `secrets.YOUTUBE_CHANNEL_ID_CH1` to
+env YOUTUBE_CHANNEL_ID. ALSO config.py now has fallback default
+"UCd5yt5eiM97UDyWkt9mZGQw" so pipeline never runs with an empty channel id.
 
 LOCAL SECRETS: scripts/load_secrets.ps1 (GITIGNORED) has ALL real values incl.
 new GEMINI key (AQ.Ab...), REPLICATE, YOUTUBE creds, TG token + chat id 798122743.
@@ -145,23 +160,27 @@ GitHub Secrets URL: https://github.com/mohammedimthiyaz1401-ai/ai-content-networ
 
 ai-content-network/
 ├── .github/workflows/
-│   └── daily_automation.yml    ✅ DONE (now passes Telegram secrets)
+│   ├── daily_morning.yml    ✅ (06:00 UTC, 1 long + 2 shorts)
+│   └── daily_night.yml      ✅ (18:00 UTC, 1 long + 2 shorts)
+│   (old daily_automation.yml DELETED - it ran BOTH halves in one go and timed out)
 ├── src/
 │   ├── __init__.py
-│   ├── config.py               ✅ DONE (API keys - NO .env, now has Telegram)
-│   ├── main_pipeline.py        ✅ DONE (orchestrator - validation+shorts+telegram)
-│   ├── media_generator.py      ✅ DONE (SDXL + XTTS-v2 + FALLBACK CHAIN + log + URI fix)
+│   ├── config.py               ✅ DONE (API keys - NO .env; YOUTUBE_CHANNEL_ID fallback;
+│   │                                LONGFORM_TARGET/SHORTS_TARGET env (default 2/4))
+│   ├── main_pipeline.py        ✅ DONE (orchestrator; DAILY_TARGETS from config env)
+│   ├── media_generator.py      ✅ DONE (SDXL+XTTS reraise=True; local→Replicate→fallback)
 │   ├── trend_sniffer.py        ✅ REWRITTEN (Gemini brainstorm, NO YouTube scraping)
 │   ├── scriptwriter.py         ✅ DONE (Gemini API, MODEL_NAME exported)
-│   ├── video_assembler.py      ✅ DONE (MoviePy 2.x + PIL text)
+│   ├── video_assembler.py      ✅ DONE (MoviePy 2.x + PIL text + KEN BURNS + crossfade)
 │   ├── shorts_clipper.py       ✅ NEW (clips 4 shorts from long-form, 9:16)
 │   ├── validation.py           ✅ NEW (quality gates: 8min, thumbnail, audio, res)
 │   ├── reporting.py            ✅ NEW (daily report vs targets + fallback log)
 │   ├── diagnostics.py          ✅ NEW (error type/message/traceback + package versions)
-│   ├── telegram_notifier.py    ✅ NEW (pushes report to Telegram - TESTED SEND OK)
-│   ├── sadtalker_host.py       ✅ NEW (talking host: SadTalker→static, URI fix)
+│   ├── telegram_notifier.py    ✅ NEW (report + PER-UPLOAD PRIVATE-review alerts)
+│   ├── sadtalker_host.py       ✅ NEW (talking host: SadTalker→static, reraise=True)
 │   ├── subtitle_timing.py      ✅ NEW (whisper timed captions + fallback)
-│   └── youtube_uploader.py     ✅ DONE (OAuth2 refresh token)
+│   ├── local_models.py         ✅ NEW (local SDXL/XTTS/SadTalker for GPU server)
+│   └── youtube_uploader.py     ✅ DONE (OAuth2 refresh token; upload notifications)
 ├── data/
 │   ├── scripts/
 │   ├── audio/
@@ -197,7 +216,10 @@ ai-content-network/
 
 DAILY RUN COST ESTIMATE (~$0.60-0.70/day for full 2 long + 4 shorts):
 - SDXL: ~$0.08-0.12 | XTTS voice: ~$0.24 | SadTalker host: ~$0.31
-- With $5 Replicate credit -> ~7-8 days of daily runs, then top up ~$5/mo
+- Actual measured 2026-08-15: ~$1 per half-day run (SDXL 10x + XTTS + SadTalker
+  fallback). Replicate email: ~$2.35 left (~21h). ~1 week of daily runs at ~$1/run.
+- GPU server (Ch.2): $0 Replicate cost. Budget guidance given: RunPod 4090
+  ~$20-30/mo, Vast.ai 4090 ~$15-25/mo, A100 ~$60-90/mo (overkill).
 
 ONE-TIME COSTS (2026-08-14):
 - Gemini prepay: $10 (12 months of scriptwriting)
@@ -312,38 +334,87 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
    - FAILSAFE: falls back to evenly-spaced chunks if whisper unavailable/fails,
      so video assembly NEVER breaks. Shorts skip whisper (too short, keep fast).
    - video_assembler.add_subtitles() now accepts audio_path and uses it.
+✅ Step 25d: YOUTUBE_CHANNEL_ID env bug FIXED (2026-08-15)
+   - First cloud run showed YOUTUBE_CHANNEL_ID empty in env (secret name mismatch).
+   - Workflows now map secrets.YOUTUBE_CHANNEL_ID_CH1 -> env YOUTUBE_CHANNEL_ID;
+     config.py also hardcodes fallback UCd5yt5eiM97UDyWkt9mZGQw.
+   - Verified: CH1 channel id prints UCd5yt5eiM97UDyWkt9mZGQw locally.
+✅ Step 25e: CHANNEL BRANDING created (2026-08-15)
+   - scripts/generate_channel_branding.py (SDXL + PIL text): profile.png (800x800),
+     banner.png (2560x1440) -> assets/branding/.
+   - docs/CHANNEL_SETUP_GUIDE.md: full channel setup (name/handle @ariafuturetech,
+     description w/ AI disclosure, SEO keywords, upload defaults, advanced settings).
+   - USER REPLACED with own images: assets/branding/profile.jpg + openart banner.
+✅ Step 25f: DAILY RUN SPLIT INTO MORNING + NIGHT (2026-08-15)
+   - User: "post one video morning, one at night; 2 long + 4 shorts daily".
+   - config.py: LONGFORM_TARGET + SHORTS_TARGET env (default 2/4).
+   - daily_morning.yml (06:00 UTC) + daily_night.yml (18:00 UTC): each 1 long + 2 shorts.
+   - Old daily_automation.yml DELETED (single-run approach timed out ~2h).
+   - Both workflows get LONGFORM_TARGET=1, SHORTS_TARGET=2, 120-min timeout.
+✅ Step 25g: FIRST FULL PRODUCTION RUN = MORNING RUN SUCCESS (2026-08-15, run 31876311262)
+   - workflow_dispatch via API (JSON via --data-binary @file; PowerShell -d quoting fails).
+   - SUCCESS in ~112 min. 1 long-form PASS ("Gemini 2.0 Flash vs GPT-4o: Is This Finally
+     The AI Killer?", 10:42, 1920x1080, 1666 words, uploaded=Y) + 2 shorts PASS (0:45,
+     1080x1920, uploaded=Y). targets_met true.
+   - Fallback log: SDXL 10x used, XTTS used, SadTalker FAILED x4 -> static portrait
+     (the "nobody talking" look). One 429 retried OK.
+   - Artifact "morning-content-1" = 58.9MB (video + scripts + reports). Download NOTE:
+     must re-list artifacts for a FRESH signed URL (old URL -> truncated/corrupt zip).
+   - Local YouTube token is 401-stale vs GitHub's working refresh token: verify uploads
+     via GitHub reports, not the local API.
+✅ Step 25h: SADTALKER tenacity BUG FIXED (2026-08-15, commit 9c800ec)
+   - "exceptions must derive from BaseException" -> tenacity `raise retry_exc from
+     fut.exception()` when replicate stores a non-BaseException error.
+   - FIX: reraise=True on ALL @retry decorators (media_generator.generate_image_sdxl,
+     generate_voice_xtts, sadtalker_host.generate_talking_clip_sadtalker).
+   - Verified via local simulation (real FakeModelError caught). Live test = night run.
+✅ Step 25i: KEN BURNS + CROSSFADE (2026-08-15, commit a3763f5)
+   - video_assembler._ken_burns(): slow zoom (in/out alternating) centered on a fixed
+     output canvas (fixes off-size bug). create_video_from_images adds CrossFadeOut(0.5).
+   - Tested: 3 images -> 15s video at exact (1920,1080).
+✅ Step 25j: LOCAL GPU MODELS + RUNPOD SCRIPTS (2026-08-15, commit a3763f5)
+   - src/local_models.py: generate_image_local (diffusers SDXL), generate_voice_local
+     (Coqui TTS), generate_host_clip_local (SadTalker inference.py subprocess).
+     Enabled by USE_LOCAL_MODELS=1 + /models. Local takes priority over Replicate.
+   - scripts/runpod_provision.sh (apt ffmpeg, venv, torch cu121, model weights to /models)
+     + scripts/runpod_entrypoint.sh (sources server_secrets.env, runs pipeline).
+   - scripts/server_secrets.env.example + .gitignore entries added.
+✅ Step 25k: PER-UPLOAD TELEGRAM ALERT (2026-08-15, commit 8abd236)
+   - telegram_notifier.send_upload_notification(): "<b>📤 New video uploaded (PRIVATE -
+     awaiting your review)</b>" + title, SHORT/LONG-FORM, duration, watch link, private note.
+   - youtube_uploader.batch_upload fires it after each successful private upload.
+   - Tested locally: message SENT (311 chars, True).
 
 
 # ============================================================
 # 8. WHAT'S PENDING (NEXT STEPS)
 # ============================================================
 
-🔜 STEP 26: WAIT FOR CLOUD RUN #1 RESULT (in progress)
-   - Check Telegram: daily report OR "<b>Pipeline FAILED</b>" diagnostic expected.
-   - Check GitHub Actions artifacts (data/videos, scripts, reports).
-   - First cloud effort - watch for YouTube IP-block (should be gone now - no scraping),
-     Replicate credits, whisper model download time on Actions.
+🔜 STEP 26: NIGHT RUN (18:00 UTC) - first live test of SadTalker reraise fix
+   - Check Telegram for per-upload PRIVATE-review alerts + daily report.
+   - Confirm fallback log: does SadTalker show "used" (animated host) now?
+   - Morning run (pre-fix) showed static-portrait fallback -> user said "dull".
 
-🔜 STEP 27: Verify SadTalker host clip end-to-end (not yet seen in a live run)
-   - host_clips/ was empty on last full run - confirm animate path or fallback
+🔜 STEP 27: Review + publish tonight's uploads on YouTube Studio
+   - User validates PRIVATE videos, then makes public manually.
 
-🔜 STEP 28: Update GitHub Secrets GEMINI_API_KEY + TELEGRAM_* (DONE by user 2026-08-15)
-   - DONE. Values stored in load_secrets.ps1 + GitHub Secrets.
+🔜 STEP 28: Decide GPU server for Channel 2
+   - Option A (recommended): rent 4090 GPU (~$15-25/mo) + USE_LOCAL_MODELS=1 ->
+     $0 Replicate for Ch.2. Scripts ready (runpod_provision.sh + entrypoint).
+   - Option B: keep Replicate (~$1/run, ~$2.35 credit left).
 
-🔜 STEP 29: Manual publish on YouTube
-   - Go to YouTube Studio, find Private video, click Publish
-
-🔜 STEP 30: Create Channel 2 & 3 (separate accounts)
-   - Create new Gmail for each, YouTube channel, OAuth2, update config
+🔜 STEP 29: Create Channel 2 & 3 (separate accounts)
+   - New Gmail per channel, YouTube channel, OAuth2, update config ACTIVE_CHANNELS.
 
 🔜 LATER (deferred): analytics scorecard, Instagram Reels posting (user said
    "not required as of now, future task").
 
 KNOWN ISSUE - FULL PIPELINE TIMING:
-   - 1 full local run >60 min (sequential Replicate calls + MoviePy 8-min encode).
-   - GitHub Actions has no such cap - that's the production path.
-   - Do NOT re-run full local test repeatedly (burns Replicate credit ~$0.60/run).
-   - Local use: quick isolated module tests (as done 2026-08-15) to verify changes.
+   - Split solved this: each half-day run is 1 long + 2 shorts, still ~100+ min
+     on GitHub Actions (sequential Replicate calls + MoviePy 8-min encode).
+     Morning run finished in ~112 min (under the 120-min timeout, barely).
+   - If runs keep approaching the cap: reduce to 1 long + 1 short per run, or
+     move to GPU server (local models are much faster, no per-call throttle).
 
 KNOWN ISSUE - VOICE SAMPLE QUALITY:
    - Current channel_1.wav = edge-tts "Aria" voice (free, decent but robotic-ish).
@@ -359,6 +430,11 @@ KNOWN ISSUE - VOICE SAMPLE QUALITY:
 PER CHANNEL:
 - 2 Long-form videos (8-10 mins each)
 - 4 Shorts (clipped from the long-form videos, 45s each, 9:16 vertical)
+
+DELIVERY SPLIT (per channel, since 2026-08-15):
+- MORNING run (06:00 UTC): 1 long + 2 shorts
+- NIGHT run (18:00 UTC): 1 long + 2 shorts
+- = 2 long + 4 shorts per channel per day (user's chosen cadence)
 
 TOTAL (3 channels):
 - 6 Long-form videos
@@ -443,6 +519,21 @@ IF YOUTUBE UPLOAD FAILS:
 - Check refresh token hasn't expired (lasts ~1 week)
 - Re-authenticate if needed using OAuth flow
 - Verify channel ID is correct
+- LOCAL refresh token is STALE (401) as of 2026-08-15 - the GitHub one works;
+  verify production uploads via the GitHub artifact reports instead.
+
+IF GITHUB RUN FAILS WITH EMPTY YOUTUBE_CHANNEL_ID:
+- The GitHub secret is named YOUTUBE_CHANNEL_ID_CH1 (not YOUTUBE_CHANNEL_ID).
+- Workflows map it: `YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID_CH1 }}`
+- config.py also has the channel id as fallback default, so it never breaks.
+
+IF ARTIFACT DOWNLOAD IS CORRUPT/TRUNCATED:
+- The signed zip URL expires. RE-LIST the artifacts first (GET .../artifacts)
+  to get a FRESH URL, then download. Old URL -> BadZipFile/142-byte file.
+
+IF SADTALKER ERRORS "exceptions must derive from BaseException":
+- tenacity raise-from-fut bug. FIXED via reraise=True (commit 9c800ec).
+- Confirm every @retry decorator has reraise=True (media_generator + sadtalker_host).
 
 IF XTTS VOICE FAILS (422 "Does not match format 'uri'"):
 - speaker must be an UPLOADED URI. FIXED via _get_speaker_url() (replicate.files.create).
@@ -517,14 +608,16 @@ GITHUB SECRETS: https://github.com/mohammedimthiyaz1401-ai/ai-content-network/se
 When starting a new session, paste this file and say:
 
 "I am building an AI Content Network project. Here is the memory file 
-with all progress. Last status: All bugs fixed & verified. Trend sniffer
-rewritten to Gemini brainstorm (no YouTube scraping). Telegram notifier
-tested live. Timed (whisper) subtitles added with fallback. GitHub Secrets
-updated by user (GEMINI + TELEGRAM). ElevenLabs Rachel voice sample live
-on GitHub. Cloud run #1 dispatched on GitHub Actions (run 31869862758) -
-WAITING FOR RESULT, check Telegram for the report or a failure diagnostic.
-Next step: evaluate cloud run #1 output, verify SadTalker host clip,
-fix anything the cloud run reveals. Continue from where we left off."
+with all progress. Last status: Cloud runs are LIVE and SUCCESSFUL. Morning
+run 31876311262 produced 1 long + 2 shorts (all uploaded PRIVATE, uploaded=Y).
+Pipeline split into daily_morning (06:00) + daily_night (18:00), 1 long + 2
+shorts each. YOUTUBE_CHANNEL_ID_CH1 secret + config fallback fixed. SadTalker
+tenacity reraise=True bug fixed (commit 9c800ec) - night run is the first
+LIVE test of the talking host. Per-upload Telegram PRIVATE-review alerts
+added. Ken Burns + crossfade in. Local GPU models + RunPod scripts ready for
+Channel 2 (~$15-25/mo, $0 Replicate). Replicate balance ~$2.35.
+Next step: check night run result (did SadTalker animate the host?), have the
+user review/publish the PRIVATE uploads, then decide GPU server vs Replicate."
 
 
 # ============================================================
