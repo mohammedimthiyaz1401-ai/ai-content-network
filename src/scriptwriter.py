@@ -22,6 +22,8 @@ SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configure Gemini API
 client = genai.Client(api_key=GEMINI_API_KEY)
+genai = genai
+MODEL_NAME = "gemini-3.1-flash-lite"
 
 # Channel-specific persona prompts
 CHANNEL_PERSONAS = {
@@ -82,7 +84,7 @@ Generate the JSON output now:"""
     print(f"[SCRIPTWRITER] Target: {word_count_target}+ words")
     
     response = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
+        model=MODEL_NAME,
         contents=prompt,
     )
     
@@ -143,7 +145,7 @@ Generate improved SEO metadata:
 Generate the JSON now:"""
     
     response = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
+        model=MODEL_NAME,
         contents=prompt,
     )
     

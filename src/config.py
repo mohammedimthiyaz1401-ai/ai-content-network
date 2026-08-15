@@ -33,6 +33,13 @@ YOUTUBE_REFRESH_TOKEN = os.getenv("YOUTUBE_REFRESH_TOKEN", "")
 YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID", "")
 
 # ============================================================
+# TELEGRAM NOTIFICATION (Daily report delivery)
+# Create a bot via @BotFather, add to your chat, get chat_id via @userinfobot
+# ============================================================
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+# ============================================================
 # CHANNEL CONFIGURATION
 # ============================================================
 CHANNELS = {

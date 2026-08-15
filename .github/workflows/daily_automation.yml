@@ -43,6 +43,8 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python src/main_pipeline.py
         timeout-minutes: 120
       
@@ -51,11 +53,18 @@ jobs:
         run: |
           echo "## Daily Content Report" >> $GITHUB_STEP_SUMMARY
           echo "Date: $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "Run: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Generated Content" >> $GITHUB_STEP_SUMMARY
-          ls -la data/videos/ 2>/dev/null || echo "No videos generated" >> $GITHUB_STEP_SUMMARY
-      
+          if [ -f data/reports/channel_1_latest.txt ]; then
+            cat data/reports/channel_1_latest.txt >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### No report generated (pipeline failed before reporting)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Generated Content Files" >> $GITHUB_STEP_SUMMARY
+          ls -la data/videos/ 2>/dev/null || echo "No videos generated"
+          ls -la data/videos/ >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+  
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,4 +73,5 @@ jobs:
           path: |
             data/videos/
             data/scripts/
+            data/reports/
           retention-days: 7

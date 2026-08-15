@@ -20,6 +20,13 @@ data/images/
 data/videos/
 data/subtitles/
 data/scripts/
+data/shorts/
+data/reports/
+data/host_clips/
+
+# Debug/test logs produced during development
+data/*.txt
+data/*.log
 
 # IDE
 .vscode/
