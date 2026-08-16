@@ -21,10 +21,6 @@ from datetime import datetime
 from typing import Dict, Optional
 from urllib.parse import urlencode
 from config import (
-    YOUTUBE_CLIENT_ID,
-    YOUTUBE_CLIENT_SECRET,
-    YOUTUBE_REFRESH_TOKEN,
-    YOUTUBE_CHANNEL_ID,
     CHANNELS,
 )
 
@@ -32,19 +28,32 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 VIDEOS_DIR = DATA_DIR / "videos"
 
 
-def get_access_token() -> str:
-    if not all([YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN]):
+def _channel_creds(channel: str) -> Dict:
+    """Return the OAuth credential dict for a channel."""
+    cfg = CHANNELS.get(channel)
+    if not cfg:
+        raise ValueError(f"Unknown channel: {channel}")
+    return {
+        "client_id": cfg.get("client_id", ""),
+        "client_secret": cfg.get("client_secret", ""),
+        "refresh_token": cfg.get("refresh_token", ""),
+    }
+
+
+def get_access_token(channel: str = "channel_1") -> str:
+    creds = _channel_creds(channel)
+    if not all(creds.values()):
         raise ValueError(
-            "Missing YouTube OAuth credentials. "
-            "Check config.py for YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN"
+            f"Missing YouTube OAuth credentials for {channel}. "
+            "Set YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKEN (+_CH2/_CH3 suffixes for other channels)."
         )
     
     token_url = "https://oauth2.googleapis.com/token"
     
     data = {
-        "client_id": YOUTUBE_CLIENT_ID,
-        "client_secret": YOUTUBE_CLIENT_SECRET,
-        "refresh_token": YOUTUBE_REFRESH_TOKEN,
+        "client_id": creds["client_id"],
+        "client_secret": creds["client_secret"],
+        "refresh_token": creds["refresh_token"],
         "grant_type": "refresh_token",
     }
     
@@ -57,7 +66,7 @@ def get_access_token() -> str:
     if not access_token:
         raise Exception(f"Failed to get access token: {token_data}")
     
-    print(f"[AUTH] Access token obtained successfully")
+    print(f"[AUTH] Access token obtained successfully for {channel}")
     return access_token
 
 
@@ -78,7 +87,7 @@ def upload_video(
     print(f"Title: {title[:60]}...")
     print(f"Privacy: {privacy_status}")
     
-    access_token = get_access_token()
+    access_token = get_access_token(channel)
     
     body = {
         "snippet": {
