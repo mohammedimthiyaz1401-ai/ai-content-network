@@ -1,7 +1,7 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-15 (SADTALKER ROOT CAUSE FOUND + FIXED: feed dedicated host PORTRAIT with real face; runner diag + local repro both confirmed)
+# LAST UPDATED: 2026-08-16 (120-MIN TIMEOUT diagnosed: whisper CPU ~101min; WHISPER_SUBTITLES gate fix aad3c49; portrait+audio fixes verified live)
 # STATUS: IN PROGRESS
 # CURRENT PHASE: Verifying SadTalker animated host on next run; deciding on GPU server for Ch.2
 # ============================================================
@@ -404,6 +404,20 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
      awaiting your review)</b>" + title, SHORT/LONG-FORM, duration, watch link, private note.
    - youtube_uploader.batch_upload fires it after each successful private upload.
    - Tested locally: message SENT (311 chars, True).
+✅ Step 25m: 120-MIN TIMEOUT DIAGNOSED + FIXED (2026-08-16, commit aad3c49)
+   - BOTH scheduled runs TIMED OUT at 120 min: night 31902696643 + morning 31923191736
+     (each sat silent ~105 min, then killed). Root cause found by comparing log timelines:
+     whisper "base" model for timed subtitles on the CPU-only GitHub runner consumed
+     ~101 min JUST to download+load model + numba JIT (successful run proof:
+     09:20:40 "Loading whisper base model" -> 11:02:09 "Transcribing..."). Two runs
+     died inside that window. (Note: the successful morning run happened to squeak by.)
+   - FIX: WHISPER_SUBTITLES env gate (default 0) in src/subtitle_timing.py -> returns fixed
+     chunks instantly, no whisper on CPU runner. GPU server keeps real timed subs:
+     scripts/runpod_entrypoint.sh sets WHISPER_SUBTITLES=1. Verified: py_compile + pushed.
+   - ALSO VERIFIED on these logs: the SadTalker PORTRAIT fix WORKED ("Talking clip saved
+     ... 102 KB" - first time animated host produced!) and static host clips now skipped
+     (audio-delay fix). Both prior fixes are live and good.
+   - Test re-dispatch: run 31928519360 (morning workflow) to confirm no timeout.
 
 
 # ============================================================
