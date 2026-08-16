@@ -15,6 +15,7 @@ Cost: $0 (local CPU). Note: base model ~140MB, transcribes 8-min audio in
 ~2-4 min on a GitHub Actions CPU - acceptable.
 """
 
+import os
 import time
 from typing import List, Dict, Optional
 
@@ -34,7 +35,18 @@ def get_timed_subtitles(audio_path: str, text: str) -> List[Dict]:
     """
     Return [{start, end, text}, ...] with real speech timing.
     Falls back to fixed chunks if whisper is not available or fails.
+
+    WHISPER_SUBTITLES env gate (default "0"):
+      GitHub Actions runners are CPU-only: loading the whisper base model +
+      numba JIT consumes ~100 minutes (confirmed: 09:20:40 -> 11:02:09 on a
+      successful run; twice it stalled >120 min and timed out). So whisper is
+      DISABLED by default. Enable with WHISPER_SUBTITLES=1 ONLY on a machine
+      where it's FAST (GPU server / local GPU), e.g. set it in the entrypoint.
     """
+    if os.getenv("WHISPER_SUBTITLES", "0") != "1":
+        print("[SUBTITLES] Whisper disabled (WHISPER_SUBTITLES!=1) - using fixed chunks")
+        return _fixed_chunks(text)
+
     try:
         import whisper
         print("[SUBTITLES] Loading whisper base model...")

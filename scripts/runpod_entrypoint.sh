@@ -35,6 +35,8 @@ export LONGFORM_TARGET="${LONGFORM_TARGET:-1}"
 export SHORTS_TARGET="${SHORTS_TARGET:-2}"
 export USE_LOCAL_MODELS="${USE_LOCAL_MODELS:-1}"
 export LOCAL_MODEL_DIR="$MODEL_DIR"
+# GPU box: whisper CPU cost is irrelevant here, real timed subtitles on
+export WHISPER_SUBTITLES="${WHISPER_SUBTITLES:-1}"
 
 export REPLICATE_API_TOKEN="${REPLICATE_API_TOKEN:-}"
 export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
