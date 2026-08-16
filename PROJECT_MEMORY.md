@@ -1,7 +1,7 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-16 (120-MIN TIMEOUT diagnosed: whisper CPU ~101min; WHISPER_SUBTITLES gate fix aad3c49; portrait+audio fixes verified live)
+# LAST UPDATED: 2026-08-16 (RUNPOD 4090 DECIDED; per-channel OAuth refactor d74a86e; 120-min timeout whisper gate fix aad3c49)
 # STATUS: IN PROGRESS
 # CURRENT PHASE: Verifying SadTalker animated host on next run; deciding on GPU server for Ch.2
 # ============================================================
@@ -438,8 +438,21 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
      $0 Replicate for Ch.2. Scripts ready (runpod_provision.sh + entrypoint).
    - Option B: keep Replicate (~$1/run, ~$2.35 credit left).
 
-🔜 STEP 29: Create Channel 2 & 3 (separate accounts)
-   - New Gmail per channel, YouTube channel, OAuth2, update config ACTIVE_CHANNELS.
+🔜 STEP 29: RUNPOD 4090 SERVER (DECIDED 2026-08-16; code-ready)
+   - DECISION: RunPod RTX 4090 Community Cloud on-demand ~$0.34/hr (~$15-25/mo all-in).
+     Vast.ai rejected (interruptible marketplace = mid-run evictions break set-and-forget).
+     One GPU powers ALL channels with $0 Replicate (USE_LOCAL_MODELS=1 + WHISPER_SUBTITLES=1).
+   - Per-channel OAuth refactor DONE (commit d74a86e): config.py CHANNELS[] holds per-channel
+     client_id/secret/refresh_token/channel_id; channels AUTO-ACTIVATE when their creds exist
+     (verified: ch1-only -> ["channel_1"], ch1+ch2 -> ["channel_1","channel_2"]).
+     Env suffixes: _CH2/_CH3 (YOUTUBE_CLIENT_ID_CH2 etc). Workflows + entrypoint updated.
+   - WHAT YOU DO: (1) create Ch.2 Gmail/YouTube/API creds (channels CHANNEL_SETUP_GUIDE.md),
+     (2) sign up RunPod, deploy pod from runpod_provision.sh + entrypoint, (3) drop all secrets
+     into scripts/server_secrets.env on the pod. Start with Ch.1+Ch.2; Ch.3 later.
+
+🔜 STEP 30: Create Channel 2 & 3 (separate accounts)
+   - New Gmail per channel, YouTube channel, OAuth2. Creds fill server_secrets.env ->
+     channels auto-activate. No config edits needed anymore.
 
 🔜 LATER (deferred): analytics scorecard, Instagram Reels posting (user said
    "not required as of now, future task").
