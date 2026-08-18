@@ -15,11 +15,12 @@ NOTE: Must use specific model version IDs, NOT :latest tag.
 import os
 import time
 import random
+import urllib.parse
 import replicate
 import requests
 from pathlib import Path
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config import REPLICATE_API_TOKEN
+from config import REPLICATE_API_TOKEN, FREE_TIER
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 IMAGES_DIR = DATA_DIR / "images"
@@ -199,6 +200,40 @@ def generate_image_sdxl(prompt: str, channel: str = "channel_1", width: int = 10
     return str(filepath)
 
 
+def generate_image_pollinations(prompt: str, channel: str = "channel_1", width: int = 1024, height: int = 1024) -> str:
+    """
+    FREE TIER primary image generation via Pollinations.ai (no API key, $0).
+    Pollinations runs a free Stable Diffusion image endpoint:
+      https://image.pollinations.ai/prompt/<prompt>?width=&height=&seed=&nologo=true
+    No credit card, no token. Filename includes the seed so re-running a topic
+    gives consistent visuals (same prompt + seed -> same image).
+    """
+    seed = CHANNEL_SEEDS.get(channel, int(time.time()) % 100000)
+    url = (
+        "https://image.pollinations.ai/prompt/"
+        + urllib.parse.quote(prompt[:300])
+        + f"?width={width}&height={height}&seed={seed}&nologo=true&nofeed=true"
+    )
+
+    print(f"[POLLINATIONS] Generating free image for {channel}...")
+    try:
+        # Pollinations can take a while on first cold call; generous timeout.
+        resp = requests.get(url, timeout=180)
+        resp.raise_for_status()
+        if len(resp.content) < 5_000:
+            raise RuntimeError(f"Image suspiciously small ({len(resp.content)} bytes)")
+        filename = f"{channel}_freeimg_{seed}_{int(time.time())}.png"
+        filepath = IMAGES_DIR / filename
+        with open(filepath, "wb") as f:
+            f.write(resp.content)
+        log_fallback("image", "Pollinations free", "used", f"seed={seed}")
+        print(f"[POLLINATIONS] Image saved: {filepath.name}")
+        return str(filepath)
+    except Exception as e:
+        log_fallback("image", "Pollinations free", "failed", str(e)[:200])
+        raise
+
+
 def generate_image_fallback(prompt: str, channel: str) -> str:
     """
     FALLBACK 2: Generate a solid-color placeholder image if Replicate SDXL fails.
@@ -227,29 +262,38 @@ def generate_image_fallback(prompt: str, channel: str) -> str:
 def generate_image(prompt: str, channel: str = "channel_1") -> str:
     """
     FALLBACK CHAIN for image generation:
-      0. Local SDXL (GPU server - free) when USE_LOCAL_MODELS=1
-      1. Replicate SDXL (premium)
-      2. Local placeholder (always works)
+      FREE_TIER=1:  0. Pollinations.ai ($0, no key)
+                    1. Placeholder (always works)
+      else:         0. Local SDXL (GPU server - free) when USE_LOCAL_MODELS=1
+                    1. Replicate SDXL (premium)
+                    2. Local placeholder (always works)
     Returns first successful image path.
     """
-    methods = [
-        ("Local SDXL", lambda: _local_image(prompt, channel)),
-        ("SDXL Replicate", lambda: generate_image_sdxl(prompt, channel)),
-        ("Placeholder", lambda: generate_image_fallback(prompt, channel)),
-    ]
-    
+    if FREE_TIER:
+        methods = [
+            ("Pollinations free", lambda: generate_image_pollinations(prompt, channel)),
+            ("Placeholder", lambda: generate_image_fallback(prompt, channel)),
+        ]
+    else:
+        methods = [
+            ("Local SDXL", lambda: _local_image(prompt, channel)),
+            ("SDXL Replicate", lambda: generate_image_sdxl(prompt, channel)),
+            ("Placeholder", lambda: generate_image_fallback(prompt, channel)),
+        ]
+
+    primary = methods[0][0]
     for name, method in methods:
         try:
             print(f"[IMG-METHOD] Trying method: {name}")
             result = method()
             # If we did NOT use the primary method, log the fallback clearly
-            if name != "SDXL Replicate":
-                log_fallback("image", name, "fallback_used", "Replicate primary skipped/failed")
+            if name != primary:
+                log_fallback("image", name, "fallback_used", f"{primary} skipped/failed")
             return result
         except Exception as e:
             print(f"[IMG-METHOD] Method '{name}' failed: {e}")
             continue
-    
+
     raise Exception("All image generation methods failed")
 
 
@@ -305,6 +349,67 @@ def generate_voice_xtts(text: str, channel: str = "channel_1", cleanup: bool = T
     return str(filepath)
 
 
+def generate_voice_edgetts(text: str, channel: str = "channel_1") -> str:
+    """
+    FREE TIER primary voice via Microsoft EdgeTTS (free, no API key, $0).
+    Uses the neural voices from Microsoft Edge (AsyncIO API). Falls into the
+    normal chain automatically if edge-tts isn't installed.
+
+    Long scripts are chunked (~4000 chars each, EdgeTTS per-request limit)
+    and concatenated with ffmpeg into one MP3.
+    """
+    try:
+        import asyncio
+        import edge_tts
+    except ImportError:
+        log_fallback("voice", "EdgeTTS free", "failed", "edge-tts not installed")
+        raise
+
+    voice_name = VOICE_CONFIG.get(channel, VOICE_CONFIG["channel_1"])["voice"]
+    final_path = AUDIO_DIR / f"{channel}_freevoice_{int(time.time())}_{random.randint(100,999)}.mp3"
+    text_for_tts = text[:20000]
+
+    print(f"[EDGETTS] Generating free voice for {channel}...")
+    chunks = [text_for_tts[i:i + 4000] for i in range(0, len(text_for_tts), 4000)]
+    chunk_paths = []
+    try:
+        async def _run():
+            for idx, chunk in enumerate(chunks):
+                com = edge_tts.Communicate(chunk, voice_name)
+                tmp = AUDIO_DIR / f"{final_path.stem}_ch{idx}.mp3"
+                await com.save(str(tmp))
+                chunk_paths.append(tmp)
+
+        asyncio.run(_run())
+        if not chunk_paths:
+            raise RuntimeError("EdgeTTS produced no audio")
+
+        # Concatenate all chunk MP3s into the final file
+        if len(chunk_paths) == 1:
+            chunk_paths[0].replace(final_path)
+        else:
+            import subprocess
+            listfile = AUDIO_DIR / f"{final_path.stem}_list.txt"
+            listfile.write_text("\n".join(f"file '{p.as_posix()}'" for p in chunk_paths) + "\n")
+            subprocess.run(
+                ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listfile),
+                 "-c", "copy", str(final_path)],
+                capture_output=True,
+            )
+            listfile.unlink(missing_ok=True)
+            for p in chunk_paths:
+                p.unlink(missing_ok=True)
+
+        if os.path.exists(final_path) and os.path.getsize(final_path) > 0:
+            log_fallback("voice", "EdgeTTS free", "used", f"{len(chunks)} chunk(s)")
+            print(f"[EDGETTS] Audio saved: {final_path.name}")
+            return str(final_path)
+        raise RuntimeError("EdgeTTS saved empty file")
+    except Exception as e:
+        log_fallback("voice", "EdgeTTS free", "failed", str(e)[:200])
+        raise
+
+
 def generate_voice_fallback(text: str, channel: str) -> str:
     """
     FALLBACK 2: Use pyttsx3 (offline TTS) if Replicate fails.
@@ -353,29 +458,39 @@ def generate_voice_fallback(text: str, channel: str) -> str:
 def generate_voice(text: str, channel: str = "channel_1") -> str:
     """
     FALLBACK CHAIN for voice generation:
-      0. Local XTTS (GPU server - free) when USE_LOCAL_MODELS=1
-      1. Replicate XTTS-v2 (premium)
-      2. Offline TTS (pyttsx3)
-      3. Silent audio (ensures video assembles)
+      FREE_TIER=1:  0. Microsoft EdgeTTS ($0, no key)
+                    1. Offline TTS (pyttsx3)
+                    2. Silent audio (ensures video assembles)
+      else:         0. Local XTTS (GPU server - free) when USE_LOCAL_MODELS=1
+                    1. Replicate XTTS-v2 (premium)
+                    2. Offline TTS (pyttsx3)
+                    3. Silent audio (ensures video assembles)
     Returns first successful audio path.
     """
-    methods = [
-        ("Local XTTS", lambda: _local_voice(text, channel)),
-        ("XTTS Replicate", lambda: generate_voice_xtts(text, channel)),
-        ("Offline TTS", lambda: generate_voice_fallback(text, channel)),
-    ]
-    
+    if FREE_TIER:
+        methods = [
+            ("EdgeTTS free", lambda: generate_voice_edgetts(text, channel)),
+            ("Offline TTS", lambda: generate_voice_fallback(text, channel)),
+        ]
+    else:
+        methods = [
+            ("Local XTTS", lambda: _local_voice(text, channel)),
+            ("XTTS Replicate", lambda: generate_voice_xtts(text, channel)),
+            ("Offline TTS", lambda: generate_voice_fallback(text, channel)),
+        ]
+
+    primary = methods[0][0]
     for name, method in methods:
         try:
             print(f"[VOICE-METHOD] Trying method: {name}")
             result = method()
-            if name != "XTTS Replicate":
-                log_fallback("voice", name, "fallback_used", "XTTS primary skipped/failed")
+            if name != primary:
+                log_fallback("voice", name, "fallback_used", f"{primary} skipped/failed")
             return result
         except Exception as e:
             print(f"[VOICE-METHOD] Method '{name}' failed: {e}")
             continue
-    
+
     raise Exception("All voice generation methods failed")
 
 

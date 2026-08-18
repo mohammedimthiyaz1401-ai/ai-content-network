@@ -1,9 +1,9 @@
 # ============================================================
 # 🧠 AI CONTENT NETWORK - MEMORY FILE
 # ============================================================
-# LAST UPDATED: 2026-08-16 (RUNPOD 4090 DECIDED; per-channel OAuth refactor d74a86e; 120-min timeout whisper gate fix aad3c49)
+# LAST UPDATED: 2026-08-18 (FREE_TIER=1 ZERO-EXPENSE MODE implemented; no cloud server needed)
 # STATUS: IN PROGRESS
-# CURRENT PHASE: Verifying SadTalker animated host on next run; deciding on GPU server for Ch.2
+# CURRENT PHASE: FREE_TIER=1 mode live - zero expense, runs on GitHub Actions alone, no laptop, no server
 # ============================================================
 # ============================================================
 
@@ -213,6 +213,48 @@ ai-content-network/
 | Video Assembly | MoviePy + FFmpeg | $0 (local) |
 | Thumbnails | Pillow (PIL) | $0 (local) |
 | YouTube Upload | YouTube Data API v3 | $0 (free) |
+
+# ============================================================
+# 6b. FREE TIER MODE (FREE_TIER=1) - ZERO EXPENSE 2026-08-18
+# ============================================================
+
+DECISION: FREE_TIER=1 implemented. The pipeline can run at $0 expense, fully
+automated on GitHub Actions (public repo = free unlimited standard-runner
+minutes), NO cloud server, NO laptop dependency. Tradeoff: quality downgrade.
+
+| Component | FREE_TIER=1 uses | Cost |
+|-----------|------------------|------|
+| Images | Pollinations.ai (free SD image API, no key, no card) | $0 |
+| Voice | Microsoft EdgeTTS (free neural voice, no key) | $0 |
+| Host | Static portrait prepended as opening Ken-Burns frame | $0 |
+| Scriptwriter | Gemini (free tier / existing $10 prepay ~$0.83/mo) | ~$0 |
+| Subtitles | Fixed chunks (WHISPER_SUBTITLES stays 0 on CPU) | $0 |
+| Assembly/Thumb/Upload | MoviePy + Pillow + YouTube API | $0 |
+
+HOW IT WORKS:
+- config.py: FREE_TIER = os.getenv("FREE_TIER","0")=="1"
+- media_generator.generate_image: FREE_TIER -> Pollinations -> Placeholder
+- media_generator.generate_voice: FREE_TIER -> EdgeTTS (chunked, ffmpeg concat) -> Offline -> Silent
+- sadtalker_host.generate_host_intro: FREE_TIER -> static portrait, degraded=False (INTENTIONAL, not failure)
+- main_pipeline: FREE_TIER -> host portrait prepended to image_paths (host visible as opening still)
+- Both workflows pass env FREE_TIER: ${{ vars.FREE_TIER }} (GitHub repo VARIABLE, not secret)
+  Set repo variable FREE_TIER=1 at
+  https://github.com/mohammedimthiyaz1401-ai/ai-content-network/settings/variables/actions
+- No fallback_used logged for free methods -> videos NOT flagged degraded -> upload normally.
+- requirements.txt adds: edge-tts
+- TESTED LIVE 2026-08-18: Pollinations image 43KB saved; EdgeTTS voice 53KB; multi-chunk
+  concat verified (16200 chars -> 6.1MB). FREE_TIER methods print [POLLINATIONS]/[EDGETTS].
+
+TOGGLE BACK TO PREMIUM: set FREE_TIER=0 (or delete the variable). Replicate SDXL+XTTS+
+SadTalker animate the host again (needs Replicate credit or RunPod GPU for full quality).
+
+NOTES:
+- Gemini scriptwriting: keep the existing $10 prepay (~$0.83/mo) OR use Gemini free tier.
+  Free tier on Flash/Flash-Lite is enough for ~3 calls/run (well under 1500 RPD).
+- Free tier is "low volume, easy to retry" friendly. Rate limits: ~10-15 RPM.
+- Pollinations may be slower on cold calls (tested OK ~10-30s with 180s timeout).
+- No cloud server required in FREE_TIER mode. RunPod 4090 ($15-25/mo) is ONLY a quality
+  upgrade path (restores animated host + AI images + real whisper captions) - not required.
 
 DAILY RUN COST ESTIMATE (~$0.60-0.70/day for full 2 long + 4 shorts):
 - SDXL: ~$0.08-0.12 | XTTS voice: ~$0.24 | SadTalker host: ~$0.31
@@ -438,17 +480,20 @@ RUNNING COST: ~$2.40/month (Replicate) + $0.83/month (Gemini) = ~$3.23/month
      $0 Replicate for Ch.2. Scripts ready (runpod_provision.sh + entrypoint).
    - Option B: keep Replicate (~$1/run, ~$2.35 credit left).
 
-🔜 STEP 29: RUNPOD 4090 SERVER (DECIDED 2026-08-16; code-ready)
+🔜 STEP 29: RUNPOD 4090 SERVER (DECIDED 2026-08-16; code-ready) - NOW OPTIONAL
+   - OPTIONAL QUALITY UPGRADE. FREE_TIER=1 (2026-08-18) means NO server needed.
    - DECISION: RunPod RTX 4090 Community Cloud on-demand ~$0.34/hr (~$15-25/mo all-in).
-     Vast.ai rejected (interruptible marketplace = mid-run evictions break set-and-forget).
-     One GPU powers ALL channels with $0 Replicate (USE_LOCAL_MODELS=1 + WHISPER_SUBTITLES=1).
+      Vast.ai rejected (interruptible marketplace = mid-run evictions break set-and-forget).
+      One GPU powers ALL channels with $0 Replicate (USE_LOCAL_MODELS=1 + WHISPER_SUBTITLES=1).
+   - WHY YOU'D STILL WANT IT: animated talking host (SadTalker), premium AI images (SDXL),
+      real whisper timed subtitles. FREE_TIER=0 + RunPod = full premium quality.
    - Per-channel OAuth refactor DONE (commit d74a86e): config.py CHANNELS[] holds per-channel
-     client_id/secret/refresh_token/channel_id; channels AUTO-ACTIVATE when their creds exist
-     (verified: ch1-only -> ["channel_1"], ch1+ch2 -> ["channel_1","channel_2"]).
-     Env suffixes: _CH2/_CH3 (YOUTUBE_CLIENT_ID_CH2 etc). Workflows + entrypoint updated.
-   - WHAT YOU DO: (1) create Ch.2 Gmail/YouTube/API creds (channels CHANNEL_SETUP_GUIDE.md),
-     (2) sign up RunPod, deploy pod from runpod_provision.sh + entrypoint, (3) drop all secrets
-     into scripts/server_secrets.env on the pod. Start with Ch.1+Ch.2; Ch.3 later.
+      client_id/secret/refresh_token/channel_id; channels AUTO-ACTIVATE when their creds exist
+      (verified: ch1-only -> ["channel_1"], ch1+ch2 -> ["channel_1","channel_2"]).
+      Env suffixes: _CH2/_CH3 (YOUTUBE_CLIENT_ID_CH2 etc). Workflows + entrypoint updated.
+   - WHAT YOU DO (if upgrading): (1) create Ch.2 Gmail/YouTube/API creds (per CHANNEL_SETUP_GUIDE.md),
+      (2) sign up RunPod, deploy pod from runpod_provision.sh + entrypoint, (3) drop all secrets
+      into scripts/server_secrets.env on the pod. Start with Ch.1+Ch.2; Ch.3 later.
 
 🔜 STEP 30: Create Channel 2 & 3 (separate accounts)
    - New Gmail per channel, YouTube channel, OAuth2. Creds fill server_secrets.env ->

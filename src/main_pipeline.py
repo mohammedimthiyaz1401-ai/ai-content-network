@@ -27,7 +27,7 @@ from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import ACTIVE_CHANNELS, CHANNELS, LONGFORM_TARGET, SHORTS_TARGET
+from config import ACTIVE_CHANNELS, CHANNELS, LONGFORM_TARGET, SHORTS_TARGET, FREE_TIER
 from trend_sniffer import get_trending_topics, analyze_viral_potential
 from scriptwriter import generate_full_video_script
 from media_generator import (
@@ -186,7 +186,14 @@ def run_video_assembler(channel: str, media_list: list) -> list:
             host_clips = []
             host_degraded = False
             host_portrait = get_host_portrait()
-            if host_portrait:
+            if host_portrait and FREE_TIER:
+                # Free tier: no animated host. Show the portrait as the OPENING
+                # Ken-Burns still so the host is still visible on camera.
+                print("[HOST] FREE_TIER: prepending static host portrait as opening frame")
+                image_paths = [host_portrait] + list(image_paths)
+                log_fallback("host", "Static portrait (FREE_TIER)", "used",
+                             "Free tier: animated host skipped by design")
+            elif host_portrait:
                 intro_line = script.get("hook", "")[:90] or script.get("title", "Welcome back to Aria Future.")[:90]
                 print("[HOST] Generating talking-host intro...")
                 host_intro = generate_host_intro(

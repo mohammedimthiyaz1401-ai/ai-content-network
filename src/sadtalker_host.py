@@ -25,7 +25,7 @@ import replicate
 import requests
 from pathlib import Path
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config import REPLICATE_API_TOKEN
+from config import REPLICATE_API_TOKEN, FREE_TIER
 from media_generator import _get_speaker_sample, log_fallback, _extract_output_url
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -187,7 +187,18 @@ def generate_host_intro(
     line: str,
 ) -> dict:
     """Generate a host speaking an intro/transition line.
-    Returns {clip_path, is_animated, degraded}."""
+    Returns {clip_path, is_animated, degraded}.
+
+    In FREE_TIER mode the paid/animated path is SKIPPED entirely:
+    the host appears as a static Ken-Burns portrait. This is the
+    INTENDED free-tier look (not a failure -> not marked degraded).
+    """
+    if FREE_TIER:
+        log_fallback("host", "Static portrait (FREE_TIER)", "used",
+                     "Free tier: animated host skipped by design")
+        print("[HOST] FREE_TIER: using static host portrait (no animation, $0)")
+        return {"clip_path": host_image, "is_animated": False, "degraded": False}
+
     from media_generator import generate_voice_xtts
     degraded = False
     try:

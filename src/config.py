@@ -16,6 +16,17 @@ import os
 REPLICATE_API_TOKEN = os.getenv("REPLICATE_API_TOKEN", "")
 
 # ============================================================
+# FREE TIER MODE (ZERO EXPENSE - no Replicate, no GPU)
+# When FREE_TIER=1 the pipeline uses only free providers:
+#   Images -> Pollinations.ai (free, no API key)
+#   Voice  -> Microsoft EdgeTTS (free, no API key)
+#   Host   -> static portrait (no animated talking head)
+# Gemini scriptwriting stays on its free tier / prepay credits.
+# This mode needs NO cloud server: runs on GitHub Actions alone.
+# ============================================================
+FREE_TIER = os.getenv("FREE_TIER", "0") == "1"
+
+# ============================================================
 # GOOGLE GEMINI API (Scriptwriting - FREE)
 # ============================================================
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
