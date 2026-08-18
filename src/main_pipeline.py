@@ -32,7 +32,7 @@ from trend_sniffer import get_trending_topics, analyze_viral_potential
 from scriptwriter import generate_full_video_script
 from media_generator import (
     generate_video_visuals, generate_full_audio,
-    get_fallback_log, clear_fallback_log,
+    get_fallback_log, clear_fallback_log, log_fallback,
 )
 from video_assembler import assemble_video, generate_thumbnail
 from shorts_clipper import clip_shorts
