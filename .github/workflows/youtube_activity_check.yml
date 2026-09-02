@@ -1,0 +1,94 @@
+name: YouTube Activity Check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+jobs:
+  check-activity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Check YouTube channel activity
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          python << 'PYEOF'
+          import os
+          import requests
+          import json
+          from datetime import datetime, timedelta
+
+          API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
+          if not API_KEY:
+              print("WARNING: YOUTUBE_API_KEY not set, skipping YouTube check")
+              exit(0)
+
+          channels = {
+              'AI Content Network': 'UCpDok-xmlXc1bVpMYLs0FnA',
+              'Stick Cat Academy': 'UCVLn-Z8sP1rvVDmsmqJ5QiQ',
+              'Future Intelligence': 'UC5Fh9A-0q5v_YxjJ-qY2z_Q',
+              'CatHub Podcast': 'UCqY5vYxjJ-qY2z_QpDok-xml',
+          }
+
+          results = []
+          for name, channel_id in channels.items():
+              try:
+                  url = f"https://www.googleapis.com/youtube/v3/search?key={API_KEY}&channelId={channel_id}&part=snippet&order=date&maxResults=3"
+                  resp = requests.get(url, timeout=10)
+                  data = resp.json()
+
+                  if 'items' in data and data['items']:
+                      latest = data['items'][0]['snippet']
+                      title = latest['title']
+                      published = latest['publishedAt'][:10]
+                      results.append(f"✓ {name}: Latest - '{title}' ({published})")
+                  else:
+                      results.append(f"⚠ {name}: No videos found or API error")
+              except Exception as e:
+                  results.append(f"✗ {name}: Error - {str(e)[:50]}")
+
+          print("\n=== YouTube Channel Activity Report ===")
+          print(f"Checked at: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+          print()
+          for r in results:
+              print(r)
+          print()
+          PYEOF
+
+      - name: Check GitHub Actions status
+        run: |
+          echo "=== Recent Workflow Runs ==="
+          echo "Checking ai-content-network workflows..."
+          
+          FAILED=$(gh api repos/${{ github.repository }}/actions/runs --jq '.workflow_runs[] | select(.conclusion == "failure") | "\(.name) - \(.created_at)"' 2>/dev/null | head -5)
+          
+          if [ -n "$FAILED" ]; then
+            echo "⚠ Recent failures detected:"
+            echo "$FAILED"
+          else
+            echo "✓ No recent failures"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate report
+        if: always()
+        run: |
+          echo "## YouTube Activity Check Report" > report.md
+          echo "**Run:** ${{ github.run_number }}" >> report.md
+          echo "**Time:** $(date -u +'%Y-%m-%d %H:%M UTC')" >> report.md
+          echo "" >> report.md
+          echo "Check the workflow logs for detailed channel activity." >> report.md
