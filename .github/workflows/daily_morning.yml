@@ -1,12 +1,12 @@
 # daily_morning.yml
 # Morning run: 1 long-form + 2 shorts (Aria Future)
-# Scheduled at 06:00 UTC. Stays well under the 120-min cap.
+# Scheduled at 06:00 UTC every Tuesday. Stays well under the 120-min cap.
 
-name: Daily Morning Content
+name: Weekly Morning Content
 
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 6 * * 2'  # Every Tuesday at 6 AM UTC
   workflow_dispatch:
 
 env:

@@ -1,12 +1,12 @@
 # daily_night.yml
 # Night run: 1 long-form + 2 shorts (Aria Future)
-# Scheduled at 18:00 UTC. Stays well under the 120-min cap.
+# Scheduled at 18:00 UTC every Friday. Stays well under the 120-min cap.
 
-name: Daily Night Content
+name: Weekly Night Content
 
 on:
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '0 18 * * 5'  # Every Friday at 6 PM UTC
   workflow_dispatch:
 
 env:
