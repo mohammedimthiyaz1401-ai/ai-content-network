@@ -54,6 +54,7 @@ jobs:
           YOUTUBE_CHANNEL_ID_CH3: ${{ secrets.YOUTUBE_CHANNEL_ID_CH3 }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KAGGLE_ACCOUNTS: ${{ secrets.KAGGLE_ACCOUNTS }}
           LONGFORM_TARGET: '0'
           SHORTS_TARGET: '1'
         run: python src/main_pipeline.py

@@ -264,9 +264,11 @@ def generate_image(prompt: str, channel: str = "channel_1") -> str:
     FALLBACK CHAIN for image generation:
       FREE_TIER=1:  0. Pollinations.ai ($0, no key)
                     1. Placeholder (always works)
-      else:         0. Local SDXL (GPU server - free) when USE_LOCAL_MODELS=1
-                    1. Replicate SDXL (premium)
-                    2. Local placeholder (always works)
+      else:         0. Kaggle GPU (free, 30hr/week) via SDXL
+                    1. Local SDXL (GPU server - free) when USE_LOCAL_MODELS=1
+                    2. Replicate SDXL (premium)
+                    3. Pollinations free ($0)
+                    4. Placeholder (always works)
     Returns first successful image path.
     """
     if FREE_TIER:
@@ -276,8 +278,10 @@ def generate_image(prompt: str, channel: str = "channel_1") -> str:
         ]
     else:
         methods = [
+            ("Kaggle GPU SDXL", lambda: _kaggle_image(prompt, channel)),
             ("Local SDXL", lambda: _local_image(prompt, channel)),
             ("SDXL Replicate", lambda: generate_image_sdxl(prompt, channel)),
+            ("Pollinations free", lambda: generate_image_pollinations(prompt, channel)),
             ("Placeholder", lambda: generate_image_fallback(prompt, channel)),
         ]
 
@@ -304,6 +308,20 @@ def _local_image(prompt: str, channel: str) -> str:
         raise FileNotFoundError("Local models not configured (USE_LOCAL_MODELS=1 + /models)")
     seed = CHANNEL_SEEDS.get(channel, 0)
     return local_models.generate_image_local(prompt, seed)
+
+
+def _kaggle_image(prompt: str, channel: str) -> str:
+    """Route to Kaggle GPU for SDXL image generation."""
+    try:
+        from kaggle_integration import kaggle_generate_image
+        result = kaggle_generate_image(prompt=prompt)
+        if result:
+            return result
+        raise FileNotFoundError("Kaggle returned empty result")
+    except ImportError:
+        raise FileNotFoundError("kaggle_integration module not installed")
+    except Exception as e:
+        raise FileNotFoundError(f"Kaggle image failed: {e}")
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=15, max=60), reraise=True)
@@ -461,10 +479,11 @@ def generate_voice(text: str, channel: str = "channel_1") -> str:
       FREE_TIER=1:  0. Microsoft EdgeTTS ($0, no key)
                     1. Offline TTS (pyttsx3)
                     2. Silent audio (ensures video assembles)
-      else:         0. Local XTTS (GPU server - free) when USE_LOCAL_MODELS=1
-                    1. Replicate XTTS-v2 (premium)
-                    2. Offline TTS (pyttsx3)
-                    3. Silent audio (ensures video assembles)
+      else:         0. Kaggle GPU (free, 30hr/week) via XTTS
+                    1. Local XTTS (GPU server - free) when USE_LOCAL_MODELS=1
+                    2. Replicate XTTS-v2 (premium)
+                    3. Offline TTS (pyttsx3)
+                    4. Silent audio (ensures video assembles)
     Returns first successful audio path.
     """
     if FREE_TIER:
@@ -474,6 +493,7 @@ def generate_voice(text: str, channel: str = "channel_1") -> str:
         ]
     else:
         methods = [
+            ("Kaggle GPU XTTS", lambda: _kaggle_voice(text, channel)),
             ("Local XTTS", lambda: _local_voice(text, channel)),
             ("XTTS Replicate", lambda: generate_voice_xtts(text, channel)),
             ("Offline TTS", lambda: generate_voice_fallback(text, channel)),
@@ -501,6 +521,21 @@ def _local_voice(text: str, channel: str) -> str:
         raise FileNotFoundError("Local models not configured (USE_LOCAL_MODELS=1 + /models)")
     speaker = _get_speaker_sample(channel)
     return local_models.generate_voice_local(text, speaker)
+
+
+def _kaggle_voice(text: str, channel: str) -> str:
+    """Route to Kaggle GPU for XTTS voice generation."""
+    try:
+        from kaggle_integration import kaggle_generate_voice
+        speaker_wav = _get_speaker_sample(channel) if os.path.exists(_get_speaker_sample(channel)) else ""
+        result = kaggle_generate_voice(text=text, speaker_wav=speaker_wav)
+        if result:
+            return result
+        raise FileNotFoundError("Kaggle returned empty result")
+    except ImportError:
+        raise FileNotFoundError("kaggle_integration module not installed")
+    except Exception as e:
+        raise FileNotFoundError(f"Kaggle voice failed: {e}")
 
 
 def generate_video_visuals(prompt: str, channel: str, num_images: int = 10) -> list:
