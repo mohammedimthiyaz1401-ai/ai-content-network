@@ -157,6 +157,7 @@ def generate_host_clip(
     """
     methods = [
         ("Local SadTalker", lambda: _local_sadtalker(source_image, audio_path, channel)),
+        ("Kaggle GPU SadTalker", lambda: _kaggle_sadtalker(source_image, audio_path, channel)),
         ("SadTalker", lambda: generate_talking_clip_sadtalker(source_image, audio_path, channel)),
         ("Static portrait", lambda: generate_host_fallback(source_image, audio_path, channel)),
     ]
@@ -176,6 +177,20 @@ def _local_sadtalker(source_image: str, audio_path: str, channel: str) -> str:
     if not local_models.should_use_local():
         raise FileNotFoundError("Local models not configured (USE_LOCAL_MODELS=1 + /models)")
     return local_models.generate_host_clip_local(source_image, audio_path, channel)
+
+
+def _kaggle_sadtalker(source_image: str, audio_path: str, channel: str) -> str:
+    """Route to Kaggle GPU for SadTalker face animation."""
+    try:
+        from kaggle_integration import kaggle_animate_face
+        result = kaggle_animate_face(source_image=source_image, driven_audio=audio_path)
+        if result:
+            return result
+        raise FileNotFoundError("Kaggle returned empty result")
+    except ImportError:
+        raise FileNotFoundError("kaggle_integration module not installed")
+    except Exception as e:
+        raise FileNotFoundError(f"Kaggle SadTalker failed: {e}")
 
 
 # ------------------------------------------------------------------
